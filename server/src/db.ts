@@ -155,6 +155,21 @@ const MIGRATIONS: Array<(d: Database.Database) => void> = [
       CREATE INDEX idx_backups_created ON backups(created_at);
     `);
   },
+
+  // 2 — handwritten entries and canvas text layers
+  (d) => {
+    d.exec(`
+      -- An item can display as its own handwriting rather than as typed text.
+      -- The title still holds the transcribed words, so search, voice and every
+      -- other feature keep working on a handwritten row exactly as on a typed one.
+      ALTER TABLE items ADD COLUMN display_mode TEXT NOT NULL DEFAULT 'text';
+      ALTER TABLE items ADD COLUMN ink_drawing_id TEXT;
+
+      -- Typed text placed on the canvas, alongside the ink strokes.
+      ALTER TABLE drawings ADD COLUMN texts TEXT NOT NULL DEFAULT '[]';
+    `);
+    d.exec(`CREATE INDEX idx_items_ink ON items(user_id, ink_drawing_id);`);
+  },
 ];
 
 function migrate() {

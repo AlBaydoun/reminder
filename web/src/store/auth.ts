@@ -32,6 +32,9 @@ function applyUserPreferences(user: User) {
   if (user.locale && user.locale !== ui.locale) ui.setLocale(user.locale);
   if (user.settings.theme && user.settings.theme !== ui.theme) ui.setTheme(user.settings.theme);
   if (user.settings.motion && user.settings.motion !== ui.motion) ui.setMotion(user.settings.motion);
+  if (user.settings.interfaceFont && user.settings.interfaceFont !== ui.interfaceFont) {
+    ui.setInterfaceFont(user.settings.interfaceFont);
+  }
 }
 
 export const useAuth = create<AuthState>((set, get) => ({

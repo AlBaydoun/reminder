@@ -7,17 +7,20 @@ import {
   Languages,
   Palette,
   RotateCcw,
+  Type,
   Save,
   Trash2,
   Upload,
   User,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { FontPicker } from '../components/FontPicker';
 import { SoundPicker } from '../components/SoundPicker';
 import { Segmented, Spinner, Toggle } from '../components/ui';
 import { api } from '../lib/api';
 import { formatBytes } from '../lib/text';
 import { formatWhen } from '../lib/format';
+import { DEFAULT_CANVAS_FONT } from '../lib/fonts';
 import { LOCALES } from '../i18n';
 import type { BackupRecord, Locale } from '../lib/types';
 import { useAuth } from '../store/auth';
@@ -128,6 +131,25 @@ export function SettingsView() {
           />
           <p className="faint">{dict.settings.motionHint}</p>
         </div>
+      </Section>
+
+      <Section icon={<Type size={17} />} title={dict.settings.interfaceFont}>
+        <FontPicker
+          value={ui.interfaceFont || 'outfit'}
+          onChange={(id) => {
+            ui.setInterfaceFont(id);
+            void saveSettings({ interfaceFont: id });
+          }}
+        />
+        <p className="faint">{dict.settings.fontHint}</p>
+      </Section>
+
+      <Section icon={<Type size={17} />} title={dict.settings.canvasFont}>
+        <FontPicker
+          value={(user?.settings.canvasFont as string) ?? DEFAULT_CANVAS_FONT}
+          onChange={(id) => void saveSettings({ canvasFont: id })}
+          filterByLocale={false}
+        />
       </Section>
 
       <Section icon={<Clock size={17} />} title={dict.settings.schedule}>

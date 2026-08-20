@@ -1,3 +1,4 @@
+import { renderInk, writeInk } from '../inkWriter';
 import type { CustomSound, Drawing, Item, Reminder, User } from '../types';
 
 /**
@@ -145,6 +146,8 @@ const item = (partial: Partial<Item> & { id: string; title: string }): Item => (
   meta: {},
   position: 0,
   pinned: false,
+  displayMode: 'text',
+  inkDrawingId: null,
   createdAt: nowIso(),
   updatedAt: nowIso(),
   completedAt: null,
@@ -166,6 +169,12 @@ export function seedState(): DemoState {
     date.setHours(hour, minute, 0, 0);
     return date.toISOString();
   };
+
+  // One entry is genuinely handwritten, so the demo shows what that looks
+  // like in the list: the ink is the row, the words make it searchable.
+  const inkStrokes = writeInk('call the plumber', { size: 34, seed: 90210, color: '#a68bff' });
+  const inkDrawingId = newId();
+  const handwrittenId = newId();
 
   const cars = newId();
   const cruiser = newId();
@@ -206,6 +215,33 @@ export function seedState(): DemoState {
     item({ id: newId(), title: 'Clean the kitchen', icon: '🧽', color: '#3ddc97', position: 3, effortMinutes: 30 }),
     item({ id: newId(), title: 'Call the dentist', icon: '🦷', color: '#ff8a5c', position: 4,
       dueAt: at(3, 9), effortMinutes: 10 }),
+    item({
+      id: handwrittenId,
+      // The transcription is the title, which is exactly why a handwritten row
+      // is searchable, completable and schedulable like any other.
+      title: 'call the plumber',
+      position: 5,
+      dueAt: at(2, 15),
+      effortMinutes: 15,
+      displayMode: 'ink',
+      inkDrawingId,
+    }),
+  ];
+
+  const drawings: Drawing[] = [
+    {
+      id: inkDrawingId,
+      itemId: handwrittenId,
+      title: 'call the plumber',
+      strokes: inkStrokes,
+      texts: [],
+      width: 520,
+      height: 90,
+      thumbnail: renderInk(inkStrokes, [], { maxWidth: 520 }),
+      recognizedText: 'call the plumber',
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    },
   ];
 
   const reminders: Reminder[] = [
@@ -277,7 +313,7 @@ export function seedState(): DemoState {
     },
     items,
     reminders,
-    drawings: [],
+    drawings,
     sounds: [],
     activity,
     backups: [],

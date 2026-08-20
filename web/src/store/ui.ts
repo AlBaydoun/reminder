@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { detectLocale, dictionaryFor, localeMeta, translate, type Vars } from '../i18n';
+import { ensureFont, fontById } from '../lib/fonts';
 import type { Dictionary } from '../i18n/en';
 import type { Locale } from '../lib/types';
 
@@ -21,6 +22,8 @@ interface UiState {
   dict: Dictionary;
   theme: Theme;
   motion: MotionLevel;
+  /** Empty string means the built-in typeface. */
+  interfaceFont: string;
   /** Resolved from motion + device capability + prefers-reduced-motion. */
   effects: { threeD: boolean; particles: boolean; heavyBlur: boolean };
   toasts: Toast[];
@@ -31,6 +34,7 @@ interface UiState {
   setLocale(locale: Locale): void;
   setTheme(theme: Theme): void;
   setMotion(motion: MotionLevel): void;
+  setInterfaceFont(fontId: string): void;
   t(path: string, vars?: Vars): string;
   toast(message: string, tone?: Toast['tone'], options?: { action?: Toast['action']; duration?: number }): string;
   dismissToast(id: string): void;
@@ -72,7 +76,7 @@ function effectsFor(motion: MotionLevel) {
   return { threeD: hasWebGL(), particles: true, heavyBlur: true };
 }
 
-function applyDocument(locale: Locale, theme: Theme, motion: MotionLevel) {
+function applyDocument(locale: Locale, theme: Theme, motion: MotionLevel, interfaceFont = '') {
   if (typeof document === 'undefined') return;
   const meta = localeMeta(locale);
   const root = document.documentElement;
@@ -80,6 +84,15 @@ function applyDocument(locale: Locale, theme: Theme, motion: MotionLevel) {
   root.dir = meta.dir;
   root.dataset.theme = theme;
   root.dataset.motion = motion;
+
+  // An inline custom property overrides the per-language default in tokens.css.
+  const stack = interfaceFont ? fontById(interfaceFont)?.stack : undefined;
+  if (stack) {
+    root.style.setProperty('--font', stack);
+    void ensureFont(interfaceFont);
+  } else {
+    root.style.removeProperty('--font');
+  }
   document
     .querySelector('meta[name="theme-color"]')
     ?.setAttribute('content', theme === 'light' ? '#eef1fb' : '#05060f');
@@ -93,10 +106,14 @@ const storedMotion = (): MotionLevel => {
   return raw === 'full' || raw === 'balanced' || raw === 'calm' ? raw : deviceTier();
 };
 
+const storedFont = (): string =>
+  (typeof localStorage !== 'undefined' && localStorage.getItem('nexus.font')) || '';
+
 const initialLocale = detectLocale();
 const initialTheme = storedTheme();
 const initialMotion = storedMotion();
-applyDocument(initialLocale, initialTheme, initialMotion);
+const initialFont = storedFont();
+applyDocument(initialLocale, initialTheme, initialMotion, initialFont);
 
 export const useUi = create<UiState>((set, get) => ({
   locale: initialLocale,
@@ -104,6 +121,7 @@ export const useUi = create<UiState>((set, get) => ({
   dict: dictionaryFor(initialLocale),
   theme: initialTheme,
   motion: initialMotion,
+  interfaceFont: initialFont,
   effects: effectsFor(initialMotion),
   toasts: [],
   commandPaletteOpen: false,
@@ -112,20 +130,26 @@ export const useUi = create<UiState>((set, get) => ({
 
   setLocale(locale) {
     localStorage.setItem('nexus.locale', locale);
-    applyDocument(locale, get().theme, get().motion);
+    applyDocument(locale, get().theme, get().motion, get().interfaceFont);
     set({ locale, dir: localeMeta(locale).dir, dict: dictionaryFor(locale) });
   },
 
   setTheme(theme) {
     localStorage.setItem('nexus.theme', theme);
-    applyDocument(get().locale, theme, get().motion);
+    applyDocument(get().locale, theme, get().motion, get().interfaceFont);
     set({ theme });
   },
 
   setMotion(motion) {
     localStorage.setItem('nexus.motion', motion);
-    applyDocument(get().locale, get().theme, motion);
+    applyDocument(get().locale, get().theme, motion, get().interfaceFont);
     set({ motion, effects: effectsFor(motion) });
+  },
+
+  setInterfaceFont(fontId) {
+    localStorage.setItem('nexus.font', fontId);
+    applyDocument(get().locale, get().theme, get().motion, fontId);
+    set({ interfaceFont: fontId });
   },
 
   t(path, vars) {

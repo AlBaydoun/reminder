@@ -27,14 +27,41 @@ const strokeSchema = z.object({
   points: z.array(pointSchema).max(20_000),
   color: z.string().max(32).optional(),
   width: z.number().min(0.1).max(200).optional(),
-  tool: z.enum(['pen', 'marker', 'pencil', 'highlighter', 'eraser']).optional(),
+  /**
+   * Must stay in step with BRUSHES in web/src/lib/brushes.ts. An unknown brush
+   * is accepted rather than rejected — a sketch drawn on a newer client should
+   * never fail to save against a server that has not been updated yet; it just
+   * renders with the default nib.
+   */
+  tool: z
+    .enum([
+      'fineliner', 'ballpoint', 'fountain', 'brush', 'marker', 'pencil', 'charcoal',
+      'crayon', 'highlighter', 'airbrush', 'neon', 'calligraphy', 'dashed', 'ribbon', 'eraser',
+    ])
+    .catch('fineliner')
+    .optional(),
   pointerType: z.enum(['pen', 'touch', 'mouse']).optional(),
+});
+
+/** Typed text placed on the canvas, kept separately from the ink strokes. */
+const textSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  text: z.string().max(2000),
+  font: z.string().max(120),
+  size: z.number().min(4).max(400),
+  color: z.string().max(32),
+  weight: z.number().int().min(100).max(900).optional(),
+  italic: z.boolean().optional(),
+  rotation: z.number().min(-180).max(180).optional(),
+  align: z.enum(['start', 'center', 'end']).optional(),
 });
 
 const drawingInput = z.object({
   itemId: z.string().uuid().nullable().optional(),
   title: z.string().trim().max(300).optional(),
   strokes: z.array(strokeSchema).max(5000),
+  texts: z.array(textSchema).max(500).optional(),
   width: z.number().int().min(1).max(10_000),
   height: z.number().int().min(1).max(10_000),
   thumbnail: z
@@ -50,6 +77,7 @@ const serialize = (row: any) => ({
   itemId: row.item_id,
   title: row.title,
   strokes: parseJson<unknown[]>(row.strokes, []),
+  texts: parseJson<unknown[]>(row.texts, []),
   width: row.width,
   height: row.height,
   thumbnail: row.thumbnail,
@@ -96,15 +124,16 @@ drawingsRouter.post(
     const id = newId();
     const ts = nowIso();
     db.prepare(
-      `INSERT INTO drawings (id, user_id, item_id, title, strokes, width, height, thumbnail,
+      `INSERT INTO drawings (id, user_id, item_id, title, strokes, texts, width, height, thumbnail,
                              recognized_text, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       user.id,
       input.itemId ?? null,
       input.title ?? '',
       JSON.stringify(input.strokes),
+      JSON.stringify(input.texts ?? []),
       input.width,
       input.height,
       input.thumbnail ?? '',
@@ -128,13 +157,14 @@ drawingsRouter.patch(
     if (!row) throw notFound('Drawing not found');
 
     db.prepare(
-      `UPDATE drawings SET item_id = ?, title = ?, strokes = ?, width = ?, height = ?,
+      `UPDATE drawings SET item_id = ?, title = ?, strokes = ?, texts = ?, width = ?, height = ?,
               thumbnail = ?, recognized_text = ?, updated_at = ?
        WHERE id = ? AND user_id = ?`,
     ).run(
       patch.itemId !== undefined ? patch.itemId : row.item_id,
       patch.title ?? row.title,
       patch.strokes ? JSON.stringify(patch.strokes) : row.strokes,
+      patch.texts ? JSON.stringify(patch.texts) : row.texts,
       patch.width ?? row.width,
       patch.height ?? row.height,
       patch.thumbnail ?? row.thumbnail,

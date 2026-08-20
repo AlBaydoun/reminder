@@ -18,6 +18,12 @@ export interface CloudPoint {
 export interface PointCloud {
   name: string;
   points: CloudPoint[];
+  /**
+   * Width / height of the glyph before normalisation. Scaling throws this
+   * away, which is why a dash and a "1" look identical to the matcher —
+   * keeping it lets the caller apply an aspect-ratio prior.
+   */
+  aspect?: number;
 }
 
 export const NUM_POINTS = 32;
@@ -136,27 +142,47 @@ export interface RecognitionResult {
   runnerUp?: { name: string; score: number };
 }
 
-export function recognize(
+export interface ScoredTemplate {
+  name: string;
+  score: number;
+  aspect?: number;
+}
+
+/**
+ * Score a point cloud against every template, best first, one entry per name.
+ * `weigh` can adjust a template's score before ranking — the word reader uses
+ * it to apply an aspect-ratio prior.
+ */
+export function scoreAgainst(
   points: CloudPoint[],
   templates: PointCloud[],
-): RecognitionResult | null {
-  if (points.length < 2 || !templates.length) return null;
+  weigh?: (template: PointCloud, score: number) => number,
+): ScoredTemplate[] {
+  if (points.length < 2 || !templates.length) return [];
   const candidate = normalize(points);
 
   const scored = templates
     .map((template) => {
       const d = greedyCloudMatch(candidate, template.points);
       // Distance 0 → perfect match, 2 → nothing alike.
-      return { name: template.name, score: Math.max((d - 2) / -2, 0) };
+      const raw = Math.max((d - 2) / -2, 0);
+      return { name: template.name, score: weigh ? weigh(template, raw) : raw, aspect: template.aspect };
     })
     .sort((a, b) => b.score - a.score);
 
   // Several templates may share a name (different ways of drawing the same
   // symbol); keep only the best of each so the runner-up is a real rival.
   const seen = new Set<string>();
-  const unique = scored.filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)));
+  return scored.filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)));
+}
 
-  return { name: unique[0].name, score: unique[0].score, runnerUp: unique[1] };
+export function recognize(
+  points: CloudPoint[],
+  templates: PointCloud[],
+): RecognitionResult | null {
+  const ranked = scoreAgainst(points, templates);
+  if (!ranked.length) return null;
+  return { name: ranked[0].name, score: ranked[0].score, runnerUp: ranked[1] };
 }
 
 /** Convert app strokes into the recognizer's flat point cloud. */

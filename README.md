@@ -24,7 +24,8 @@ date, a repeat rule, notes and sketches.
 | **Voice control** | Speak one sentence containing several commands. "add oil change under cars corolla and remind me tomorrow at eight and add cleaning" becomes three operations, applied atomically, with one-tap undo. English, Arabic and Russian. |
 | **Alarms** | Multiple simultaneous alarms, twelve synthesized tones, your own uploaded sounds (on a phone the picker opens your music and ringtones), snooze, escalating ring, pre-alerts, and repeats down to "every other day at half past six". |
 | **Reasoning** | A ranked focus queue that explains *why* each item is where it is, workload forecasting against your daily capacity, dependency-cycle detection, near-duplicate detection, and auto-categorisation learned from your own tree. |
-| **Pen & handwriting** | Pressure- and tilt-aware drawing. Handwriting is read by the browser's own engine where one exists; shapes, digits and pen gestures are read everywhere by a built-in recognizer. Draw a checkmark to complete a task, a star to pin it, a strike to delete it. |
+| **Handwriting** | Write a task by hand and it stays handwritten — the ink is the row. The transcription becomes the title, so it is searchable, completable, schedulable and voice-addressable like any typed entry. Read by the browser's own engine where one exists, and by a built-in reader everywhere else. |
+| **Brushes & fonts** | Fifteen brushes — fineliner, ballpoint, fountain, calligraphy, brush pen, marker, pencil, charcoal, crayon, highlighter, airbrush, neon, dashed, ribbon, eraser — driven by pressure, tilt and speed. Forty-one typefaces for the canvas text tool and the interface. Draw a checkmark to complete a task, a star to pin it, a strike to delete it. |
 | **3D Galaxy** | Categories as living worlds. Size tracks how much is inside, a ring shows completion, overdue worlds pulse, and tasks orbit as moons. |
 | **Backups** | A full copy of every account is written every night, plus a byte-exact database snapshot. Rotation, restore-with-safety-copy, manual export and import. |
 | **Languages** | English, العربية (full RTL) and Русский — interface *and* voice grammar. |
@@ -177,14 +178,53 @@ descendants, weighted by inverse document frequency, so distinctive words
 
 ### Handwriting
 
-Two layers. Where the browser has a **Handwriting Recognition API** (Chrome on
-ChromeOS and Windows) that is used for real text — cursive, sentences, on
-device. Everywhere else a built-in **$P point-cloud recognizer** reads shapes,
-digits and pen gestures. $P needs no training data, no model download and no
-network, and does not care about stroke order.
+**A handwritten entry is an entry.** It keeps your ink as its face in the list,
+and the transcription becomes its title — which is what search, voice, the
+focus ranking and the reasoning engine all read. It has a checkbox, a due date,
+alarms and a place in the tree, exactly like a typed row. Complete it and the
+handwriting is struck through, the way you would on paper.
 
-It is **not** a general handwriting engine, and the interface says so rather
-than implying otherwise.
+Reading happens in three layers:
+
+1. **Pen gestures.** One or two strokes that form a checkmark, star, circle or
+   strike are an instruction, not writing, and are caught first.
+2. **The platform engine** where one exists (Chrome on ChromeOS and Windows) —
+   true on-device recognition, cursive included.
+3. **Nexus's own reader** everywhere else. Strokes are split into lines, lines
+   into characters, and each character is matched with the same $P point-cloud
+   recognizer used for shapes. Word breaks are found by comparing each gap
+   against the other gaps on the line rather than against a fixed threshold,
+   because the blank to the right of a "p" is wider than the gap after an "l".
+
+Two things scaling throws away had to be put back, because $P normalises
+before matching:
+
+- **Aspect ratio.** A dash, a "1" and an "l" are the same point cloud once
+  scaled; the template's original proportions are kept and used as a prior.
+- **Size relative to the line.** A full stop and a lower-case "o" are both just
+  a circle. Height against the tallest thing on the line is the only thing that
+  separates them.
+
+`scripts/handwriting-check.ts` synthesises words with per-letter jitter,
+varying size, uneven spacing and slant, and requires 90% character accuracy —
+it currently reads 10/10 phrases exactly.
+
+It reads **separated print, not joined cursive**, so the transcription is
+always shown in an editable field and never applied silently. It appears as you
+write, so most of the time correcting it is one keystroke or none.
+
+### Brushes
+
+Each brush is a set of physical parameters rather than a bespoke routine — how
+much pressure changes the width, how much speed thins the line, whether the nib
+is round or a chisel, how grainy the deposit is. A fountain pen that swells on
+the downstroke and a charcoal stick that drags come out of the same code path.
+
+Pressure response is applied only to real pen input: a mouse reports a constant
+0.5, so responding to it would make every brush the same slightly-wrong
+thickness. Finished strokes live on a second offscreen canvas and only the
+stroke under the pen is repainted each frame, so a page of charcoal does not
+turn drawing into a slideshow.
 
 ### Backups
 
@@ -216,7 +256,10 @@ web/
   src/
     lib/
       nlp/                 lexicon, numbers, datetime, command parser
-      recognition/         $P recognizer, templates, handwriting API
+      recognition/         $P recognizer, glyph templates, word reader
+      brushes.ts           the fifteen brushes
+      fonts.ts             the typeface library
+      inkWriter.ts         writes text as strokes; renders ink to an image
       audio/               synthesized tones, playback
     store/                 auth, data, ui, alarms, voice
     three/                 galaxy scene, nebula shader
@@ -230,6 +273,7 @@ web/
 scripts/
   nlp-check.ts             22 utterances, 3 languages
   recognition-check.ts     12 shapes with simulated hand jitter
+  handwriting-check.ts     10 handwritten phrases, 90% character-accuracy floor
   make-icons.mjs           PWA icons, generated (no image dependency)
 .github/workflows/
   pages.yml                typecheck, test, build the demo, deploy to Pages
@@ -254,8 +298,10 @@ scripts/
   tab. Installing to the home screen helps; a native build is the real fix.
 - **Speech recognition** needs Chrome, Edge or Safari, and most
   implementations send audio to the vendor's servers.
-- **Handwriting-to-text** falls back to shapes, digits and gestures where the
-  platform has no handwriting engine.
+- **Handwriting** reads separated print, not joined cursive. The transcription
+  is always editable, and the ink is kept whatever the reader made of it.
+- **Fonts** are fetched from Google Fonts the first time each is used. Offline,
+  the fallback stack takes over and nothing breaks.
 - **Single server, single region.** No multi-device conflict resolution beyond
   last-write-wins; the server is the single source of truth.
 - **The demo is per-browser.** Clearing site data clears the workspace, and

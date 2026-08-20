@@ -2,6 +2,7 @@ import type {
   BackupRecord,
   BatchOp,
   BuiltinSound,
+  CanvasText,
   CategorySuggestion,
   CustomSound,
   DayLoad,
@@ -210,6 +211,7 @@ export const api = {
     itemId?: string | null;
     title?: string;
     strokes: Stroke[];
+    texts?: CanvasText[];
     width: number;
     height: number;
     thumbnail?: string;

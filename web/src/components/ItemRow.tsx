@@ -5,6 +5,7 @@ import {
   ChevronRight,
   CornerDownRight,
   Lock,
+  PenLine,
   Pin,
   Repeat,
 } from 'lucide-react';
@@ -21,6 +22,8 @@ export interface ItemRowProps {
   collapsed: boolean;
   reminders: Reminder[];
   blocked: boolean;
+  /** Thumbnail of the handwriting, when this row was written rather than typed. */
+  ink?: string;
   onToggleCollapse(id: string): void;
   onComplete(id: string, done: boolean): void;
   onOpen(id: string): void;
@@ -45,6 +48,7 @@ export function ItemRow({
   onAddChild,
   onDropInto,
   compact,
+  ink,
 }: ItemRowProps) {
   const { dict, locale } = useTranslation();
   const dir = useUi((s) => s.dir);
@@ -147,9 +151,21 @@ export function ItemRow({
           {item.icon || (node.isCategory ? '🗂️' : '•')}
         </span>
 
-        <span className="item-row__title grow truncate">{item.title}</span>
+        {ink && item.displayMode === 'ink' ? (
+          // The handwriting is the row's face; the transcription sits under it
+          // so the words stay readable, selectable and obviously searchable.
+          <span className="item-row__ink grow">
+            <img src={ink} alt={item.title} draggable={false} />
+            <span className="item-row__ink-text faint truncate">{item.title}</span>
+          </span>
+        ) : (
+          <span className="item-row__title grow truncate">{item.title}</span>
+        )}
 
         <span className="item-row__meta">
+          {item.displayMode === 'ink' && (
+            <PenLine size={13} className="item-row__handwritten" aria-label={dict.item.handwritten} />
+          )}
           {item.pinned && <Pin size={13} className="item-row__pin" aria-label={dict.item.pinned} />}
           {item.recurrence && <Repeat size={13} aria-label={dict.item.repeats} />}
           {reminders.length > 0 && (

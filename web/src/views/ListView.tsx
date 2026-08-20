@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ItemRow } from '../components/ItemRow';
 import { QuickAdd } from '../components/QuickAdd';
 import { EmptyState, Segmented } from '../components/ui';
-import { buildTree, flattenTree, useData } from '../store/data';
+import { buildTree, flattenTree, inkThumbnails, useData } from '../store/data';
 import { useTranslation, useUi } from '../store/ui';
 
 type Filter = 'open' | 'all' | 'done';
@@ -27,6 +27,7 @@ export function ListView() {
   const { dict } = useTranslation();
   const items = useData((s) => s.items);
   const reminders = useData((s) => s.reminders);
+  const drawings = useData((s) => s.drawings);
   const toggleComplete = useData((s) => s.toggleComplete);
   const moveItem = useData((s) => s.moveItem);
   const openDetail = useUi((s) => s.openDetail);
@@ -49,6 +50,8 @@ export function ListView() {
     },
     [collapsed],
   );
+
+  const ink = useMemo(() => inkThumbnails(drawings), [drawings]);
 
   const remindersByItem = useMemo(() => {
     const map = new Map<string, typeof reminders>();
@@ -127,6 +130,7 @@ export function ListView() {
               collapsed={collapsed.has(node.item.id)}
               reminders={remindersByItem.get(node.item.id) ?? []}
               blocked={blockedIds.has(node.item.id)}
+              ink={node.item.inkDrawingId ? ink.get(node.item.inkDrawingId) : undefined}
               onToggleCollapse={toggleCollapse}
               onComplete={(id, done) => void toggleComplete(id, done)}
               onOpen={openDetail}

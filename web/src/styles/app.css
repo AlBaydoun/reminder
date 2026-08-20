@@ -224,6 +224,7 @@
 /* ── Views ──────────────────────────────────────────────────────────────── */
 .view {
   height: 100%;
+  min-width: 0;
   overflow-y: auto;
   padding: 8px 24px 120px;
   max-width: 1180px;
@@ -1737,4 +1738,201 @@
     inset-inline-start: 12px;
     width: calc(100% - 24px);
   }
+}
+
+/* ── Brush bar ──────────────────────────────────────────────────────────── */
+.canvas-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  /* Without this the brush bar's intrinsic width pushes the whole view wider
+     than its max-width, which clips the page title and lets chips escape the
+     rounded panel. min-width:0 lets the flex child actually shrink and scroll. */
+  min-width: 0;
+  overflow: hidden;
+}
+.canvas-toolbar__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.brush-bar {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  min-width: 0;
+  max-width: 100%;
+}
+.brush-bar__group {
+  display: flex;
+  gap: 4px;
+  padding-inline-end: 14px;
+  border-inline-end: 1px solid var(--stroke);
+}
+.brush-bar__group:last-of-type {
+  border-inline-end: none;
+}
+.brush-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s var(--ease-spring);
+  flex-shrink: 0;
+}
+.brush-chip:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.brush-chip.is-active {
+  background: rgba(124, 231, 255, 0.14);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.brush-chip__name {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.draw-canvas.is-text-mode {
+  cursor: text;
+}
+
+/* ── Transcription ──────────────────────────────────────────────────────── */
+.transcript {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+.transcript__icon {
+  color: var(--accent);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.transcript__label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+}
+.transcript__input {
+  font-size: 15.5px;
+  font-weight: 600;
+}
+.transcript__hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+/* ── Font picker ────────────────────────────────────────────────────────── */
+.font-picker__search {
+  margin-bottom: 10px;
+}
+.font-picker__list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.font-picker__heading {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.font-picker__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.font-picker__group .font-picker__heading {
+  width: 100%;
+}
+.font-picker__item {
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.2;
+  transition: border-color 0.15s, background 0.15s;
+}
+.font-picker__item:hover {
+  border-color: var(--stroke-strong);
+}
+.font-picker__item.is-active {
+  border-color: var(--accent);
+  background: rgba(124, 231, 255, 0.12);
+}
+.font-picker__preview {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--stroke);
+  font-size: 22px;
+}
+.font-picker__empty {
+  padding: 14px 4px;
+}
+
+/* ── Handwritten rows ───────────────────────────────────────────────────── */
+.item-row__ink {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  position: relative;
+  padding: 2px 0;
+}
+.item-row__ink img {
+  max-height: 34px;
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  /* The ink is drawn light-on-dark; invert it for the light theme so a note
+     written at night is still readable in the morning. */
+  filter: none;
+}
+:root[dir='rtl'] .item-row__ink img {
+  object-position: right center;
+}
+:root[data-theme='light'] .item-row__ink img {
+  filter: invert(1) hue-rotate(180deg);
+}
+.item-row__ink-text {
+  font-size: 11px;
+  line-height: 1.2;
+}
+.item-row.is-done .item-row__ink img {
+  opacity: 0.4;
+}
+.item-row.is-done .item-row__ink::after {
+  /* Completed handwriting gets struck through, the way you would on paper. */
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 42%;
+  height: 1.5px;
+  background: var(--text-faint);
+  border-radius: 2px;
+}
+.item-row.is-done .item-row__ink-text {
+  text-decoration: line-through;
+}
+.item-row__handwritten {
+  color: var(--accent-2);
 }

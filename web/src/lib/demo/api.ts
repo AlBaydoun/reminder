@@ -3,6 +3,7 @@ import type {
   BackupRecord,
   BatchOp,
   BuiltinSound,
+  CanvasText,
   CustomSound,
   Drawing,
   DueReminder,
@@ -185,6 +186,8 @@ function makeItem(s: DemoState, input: Partial<Item> & { title: string }): Item 
     meta: input.meta ?? {},
     position: input.position ?? nextPosition(s, parentId),
     pinned: input.pinned ?? false,
+    displayMode: input.displayMode ?? 'text',
+    inkDrawingId: input.inkDrawingId ?? null,
     createdAt: ts,
     updatedAt: ts,
     completedAt: input.status === 'done' ? ts : null,
@@ -735,6 +738,7 @@ export const api = {
     itemId?: string | null;
     title?: string;
     strokes: Stroke[];
+    texts?: CanvasText[];
     width: number;
     height: number;
     thumbnail?: string;
@@ -746,6 +750,7 @@ export const api = {
       itemId: input.itemId ?? null,
       title: input.title ?? '',
       strokes: input.strokes,
+      texts: input.texts ?? [],
       width: input.width,
       height: input.height,
       thumbnail: input.thumbnail ?? '',
@@ -833,13 +838,20 @@ export const api = {
     const s = await load();
     const needle = q.trim().toLowerCase();
     if (!needle) return settle([]);
+    const inkText = new Map<string, string>();
+    for (const drawing of s.drawings) {
+      if (!drawing.itemId || !drawing.recognizedText) continue;
+      inkText.set(drawing.itemId, `${inkText.get(drawing.itemId) ?? ''} ${drawing.recognizedText}`);
+    }
+
     return settle(
       live(s)
         .filter(
           (i) =>
             i.title.toLowerCase().includes(needle) ||
             i.notes.toLowerCase().includes(needle) ||
-            i.tags.some((t) => t.toLowerCase().includes(needle)),
+            i.tags.some((t) => t.toLowerCase().includes(needle)) ||
+            (inkText.get(i.id) ?? '').toLowerCase().includes(needle),
         )
         .slice(0, 60)
         .map((i) => ({
@@ -851,6 +863,8 @@ export const api = {
           status: i.status,
           dueAt: i.dueAt,
           tags: i.tags,
+          displayMode: i.displayMode,
+          inkDrawingId: i.inkDrawingId,
           snippet: i.notes.slice(0, 160),
         })),
     );

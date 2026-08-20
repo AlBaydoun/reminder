@@ -63,8 +63,14 @@ export const useData = create<DataState>((set, get) => ({
   async refresh(options = {}) {
     if (!options.silent) set({ loading: true });
     try {
-      const [items, reminders] = await Promise.all([api.listItems(true), api.listReminders()]);
-      set({ items: items.items, reminders, loading: false, loaded: true, lastError: null });
+      const [items, reminders, drawings] = await Promise.all([
+        api.listItems(true),
+        api.listReminders(),
+        // Handwritten rows render their own ink, so sketches are part of the
+        // workspace now rather than something only the drawing screen loads.
+        api.listDrawings().catch(() => [] as Drawing[]),
+      ]);
+      set({ items: items.items, reminders, drawings, loading: false, loaded: true, lastError: null });
       void get().refreshOverview();
     } catch (err) {
       set({ loading: false, lastError: (err as Error).message });
@@ -306,6 +312,15 @@ export function findNode(nodes: TreeNode[], id: string): TreeNode | null {
     if (hit) return hit;
   }
   return null;
+}
+
+/** Thumbnail for each drawing, so a row can show the handwriting it was written in. */
+export function inkThumbnails(drawings: Drawing[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const drawing of drawings) {
+    if (drawing.thumbnail) map.set(drawing.id, drawing.thumbnail);
+  }
+  return map;
 }
 
 export function itemPath(items: Item[], id: string): Item[] {

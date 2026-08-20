@@ -21,6 +21,8 @@ export interface UserSettings {
   voiceContinuous?: boolean;
   voiceLocale?: Locale;
   notificationsAsked?: boolean;
+  interfaceFont?: string;
+  canvasFont?: string;
   [key: string]: unknown;
 }
 
@@ -57,6 +59,13 @@ export interface Item {
   meta: Record<string, unknown>;
   position: number;
   pinned: boolean;
+  /**
+   * 'ink' renders the row as the handwriting it was written in. The title
+   * still holds the transcription, so search, voice, completion and every
+   * other feature treat it exactly like a typed row.
+   */
+  displayMode: 'text' | 'ink';
+  inkDrawingId: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -112,12 +121,44 @@ export interface StrokePoint {
   t?: number;
 }
 
+/** Every brush the canvas offers. */
+export type BrushId =
+  | 'fineliner'
+  | 'ballpoint'
+  | 'fountain'
+  | 'brush'
+  | 'marker'
+  | 'pencil'
+  | 'charcoal'
+  | 'crayon'
+  | 'highlighter'
+  | 'airbrush'
+  | 'neon'
+  | 'calligraphy'
+  | 'dashed'
+  | 'ribbon'
+  | 'eraser';
+
 export interface Stroke {
   points: StrokePoint[];
   color?: string;
   width?: number;
-  tool?: 'pen' | 'marker' | 'pencil' | 'highlighter' | 'eraser';
+  tool?: BrushId;
   pointerType?: 'pen' | 'touch' | 'mouse';
+}
+
+/** Typed text placed on the canvas, stored separately from the ink. */
+export interface CanvasText {
+  x: number;
+  y: number;
+  text: string;
+  font: string;
+  size: number;
+  color: string;
+  weight?: number;
+  italic?: boolean;
+  rotation?: number;
+  align?: 'start' | 'center' | 'end';
 }
 
 export interface Drawing {
@@ -125,6 +166,7 @@ export interface Drawing {
   itemId: string | null;
   title: string;
   strokes: Stroke[];
+  texts: CanvasText[];
   width: number;
   height: number;
   thumbnail: string;
@@ -217,6 +259,8 @@ export type BatchOp =
       parentId?: string | null;
       parentPath?: string[];
       createMissingPath?: boolean;
+      displayMode?: 'text' | 'ink';
+      inkDrawingId?: string | null;
       dueAt?: string | null;
       priority?: number;
       energy?: number;

@@ -43,6 +43,9 @@ const itemInput = z.object({
   meta: z.record(z.unknown()).optional(),
   pinned: z.boolean().optional(),
   position: z.number().optional(),
+  /** 'ink' renders this row as the handwriting it was written in. */
+  displayMode: z.enum(['text', 'ink']).optional(),
+  inkDrawingId: z.string().uuid().nullable().optional(),
 });
 
 type ItemInput = z.infer<typeof itemInput>;
@@ -88,10 +91,12 @@ export function insertItem(userId: string, input: ItemInput & { parentId?: strin
   db.prepare(
     `INSERT INTO items (id, user_id, parent_id, title, notes, icon, color, status, priority, energy,
                         effort_minutes, due_at, start_at, recurrence, tags, blocked_by, meta,
-                        position, pinned, created_at, updated_at, completed_at)
+                        position, pinned, display_mode, ink_drawing_id,
+                        created_at, updated_at, completed_at)
      VALUES (@id, @user_id, @parent_id, @title, @notes, @icon, @color, @status, @priority, @energy,
              @effort_minutes, @due_at, @start_at, @recurrence, @tags, @blocked_by, @meta,
-             @position, @pinned, @ts, @ts, @completed_at)`,
+             @position, @pinned, @display_mode, @ink_drawing_id,
+             @ts, @ts, @completed_at)`,
   ).run({
     id,
     user_id: userId,
@@ -112,6 +117,8 @@ export function insertItem(userId: string, input: ItemInput & { parentId?: strin
     meta: JSON.stringify(input.meta ?? {}),
     position: input.position ?? nextPosition(userId, parentId),
     pinned: input.pinned ? 1 : 0,
+    display_mode: input.displayMode ?? 'text',
+    ink_drawing_id: input.inkDrawingId ?? null,
     ts,
     completed_at: input.status === 'done' ? ts : null,
   });
@@ -195,6 +202,7 @@ itemsRouter.patch(
          status = @status, priority = @priority, energy = @energy, effort_minutes = @effort_minutes,
          due_at = @due_at, start_at = @start_at, recurrence = @recurrence, tags = @tags,
          blocked_by = @blocked_by, meta = @meta, position = @position, pinned = @pinned,
+         display_mode = @display_mode, ink_drawing_id = @ink_drawing_id,
          completed_at = @completed_at, updated_at = @ts
        WHERE id = @id AND user_id = @user_id`,
     ).run({
@@ -222,6 +230,8 @@ itemsRouter.patch(
       meta: patch.meta ? JSON.stringify({ ...JSON.parse(row.meta), ...patch.meta }) : row.meta,
       position: patch.position ?? row.position,
       pinned: patch.pinned === undefined ? row.pinned : patch.pinned ? 1 : 0,
+      display_mode: patch.displayMode ?? row.display_mode,
+      ink_drawing_id: patch.inkDrawingId !== undefined ? patch.inkDrawingId : row.ink_drawing_id,
       completed_at: completedAt,
       ts,
     });

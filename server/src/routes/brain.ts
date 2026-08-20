@@ -126,15 +126,29 @@ brainRouter.get(
     const q = String(req.query.q ?? '').trim();
     if (!q) return res.json({ results: [] });
     const like = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+    // Handwritten rows are found the same way as typed ones: the transcription
+    // lives in the title, and any sketch attached to an item is searched too,
+    // so ink is never a dead end in search.
     const rows = db
       .prepare(
-        `SELECT id, title, notes, icon, color, parent_id, status, due_at, tags FROM items
-         WHERE user_id = ? AND deleted_at IS NULL
-           AND (title LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\' OR tags LIKE ? ESCAPE '\\')
-         ORDER BY CASE WHEN title LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, updated_at DESC
+        `SELECT i.id, i.title, i.notes, i.icon, i.color, i.parent_id, i.status, i.due_at, i.tags,
+                i.display_mode, i.ink_drawing_id
+         FROM items i
+         WHERE i.user_id = ? AND i.deleted_at IS NULL
+           AND (
+             i.title LIKE ? ESCAPE '\\'
+             OR i.notes LIKE ? ESCAPE '\\'
+             OR i.tags  LIKE ? ESCAPE '\\'
+             OR EXISTS (
+               SELECT 1 FROM drawings d
+               WHERE d.item_id = i.id AND d.deleted_at IS NULL
+                 AND d.recognized_text LIKE ? ESCAPE '\\'
+             )
+           )
+         ORDER BY CASE WHEN i.title LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, i.updated_at DESC
          LIMIT 60`,
       )
-      .all(user.id, like, like, like, like) as any[];
+      .all(user.id, like, like, like, like, like) as any[];
     res.json({
       results: rows.map((r) => ({
         id: r.id,
@@ -145,6 +159,8 @@ brainRouter.get(
         status: r.status,
         dueAt: r.due_at,
         tags: parseJson<string[]>(r.tags, []),
+        displayMode: r.display_mode === 'ink' ? 'ink' : 'text',
+        inkDrawingId: r.ink_drawing_id,
         snippet: String(r.notes ?? '').slice(0, 160),
       })),
     });

@@ -21,6 +21,8 @@ export interface ItemRow {
   meta: string;
   position: number;
   pinned: number;
+  display_mode: string;
+  ink_drawing_id: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -46,6 +48,9 @@ export interface Item {
   meta: Record<string, unknown>;
   position: number;
   pinned: boolean;
+  /** 'ink' renders the item as the handwriting it was written in. */
+  displayMode: 'text' | 'ink';
+  inkDrawingId: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -72,6 +77,8 @@ export function serializeItem(row: ItemRow): Item {
     meta: parseJson<Record<string, unknown>>(row.meta, {}),
     position: row.position,
     pinned: row.pinned === 1,
+    displayMode: row.display_mode === 'ink' ? 'ink' : 'text',
+    inkDrawingId: row.ink_drawing_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
