@@ -22,12 +22,17 @@ export function titleCase(text: string): string {
   return text.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1));
 }
 
-/** Deterministic colour for a title, so untinted categories still feel distinct. */
+/**
+ * Deterministic colour for a title, so untinted categories still feel distinct.
+ * The comma form of `hsl()` is deliberate: Three.js's colour parser does not
+ * understand the space-separated CSS Color 4 syntax and silently returns white,
+ * which turned every untinted world in the Galaxy view grey.
+ */
 export function colorFromString(text: string): string {
   let hash = 0;
   for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
   const hue = hash % 360;
-  return `hsl(${hue} 78% 62%)`;
+  return `hsl(${hue}, 72%, 62%)`;
 }
 
 /** Pick a readable emoji for a new item based on words it contains. */

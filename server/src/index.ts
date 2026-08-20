@@ -27,13 +27,20 @@ app.use(compression());
 app.use(express.json({ limit: '8mb' }));
 app.use(cookieParser());
 app.use(
-  cors({
-    origin(origin, callback) {
-      // Same-origin requests (and curl) send no Origin header at all.
-      if (!origin || CORS_ORIGINS.includes(origin)) return callback(null, true);
-      callback(new Error(`Origin ${origin} is not allowed`));
-    },
-    credentials: true,
+  cors((req, callback) => {
+    const origin = req.headers.origin;
+    // No Origin header at all: a same-origin navigation, or curl.
+    if (!origin) return callback(null, { origin: true, credentials: true });
+
+    // A crossorigin <script>/<link> on our own page sends an Origin header even
+    // though it is same-origin, so compare against this server's own host too.
+    const host = req.headers.host;
+    const selfOrigins = host ? [`http://${host}`, `https://${host}`] : [];
+    const allowed = CORS_ORIGINS.includes(origin) || selfOrigins.includes(origin);
+
+    // Denying by omitting the headers (rather than throwing) keeps a rejected
+    // cross-origin request a clean CORS failure instead of a 500.
+    callback(null, { origin: allowed, credentials: true });
   }),
 );
 

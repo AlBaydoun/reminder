@@ -15,7 +15,9 @@
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
     "test:nlp": "tsx scripts/nlp-check.ts",
-    "test": "npm run test:nlp"
+    "test": "npm run test:nlp && npm run test:recognition",
+    "test:recognition": "tsx scripts/recognition-check.ts",
+    "icons": "node scripts/make-icons.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
