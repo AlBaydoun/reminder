@@ -25,7 +25,7 @@ import { hasNativeHandwriting, recognizeStrokes } from '../lib/recognition/handw
 import { readHandwriting } from '../lib/recognition/words';
 import { GESTURE_I18N, type GestureAction } from '../lib/recognition/templates';
 import { iconForTitle } from '../lib/text';
-import type { BrushId, CanvasText } from '../lib/types';
+import type { BrushId, CanvasText, Stroke } from '../lib/types';
 import { useAuth } from '../store/auth';
 import { useData } from '../store/data';
 import { useTranslation, useUi } from '../store/ui';
@@ -89,7 +89,7 @@ export function CanvasView() {
   );
 
   /** Read as the pen rests, so the words appear while you write. */
-  const onSettle = (strokes: Parameters<NonNullable<Parameters<typeof DrawCanvas>[0]['onSettle']>>[0]) => {
+  const onSettle = (strokes: Stroke[]) => {
     if (edited || textMode) return;
     const read = readHandwriting(strokes);
     if (read.text) {

@@ -418,7 +418,6 @@ export const api = {
     await clearAll();
     state = null;
     loading = null;
-    for (const id of []) forgetSoundUrl(id);
     await load();
     setAccessToken('demo');
   },
