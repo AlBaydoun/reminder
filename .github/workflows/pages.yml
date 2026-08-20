@@ -1,0 +1,72 @@
+name: Deploy demo to GitHub Pages
+
+# The published demo is the full app with an in-browser backend
+# (VITE_DEMO=true), because GitHub Pages serves static files only and cannot
+# run the Node/SQLite server. Everything a visitor does stays in their browser.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/todo-reminder-app-q5ki65
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Test the voice parser and shape recognizer
+        run: npm test
+
+      # `enablement: true` turns Pages on for the repository on the first run,
+      # so no manual switch is needed in Settings.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Build the demo
+        env:
+          # base_path already carries the /<repo>/ prefix Pages serves from.
+          VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+        run: npm run build:demo
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

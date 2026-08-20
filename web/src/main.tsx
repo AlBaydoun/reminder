@@ -1,12 +1,18 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { unlockAudio } from './lib/audio/player';
+import { IS_DEMO } from './lib/api';
+import { setSoundUrlResolver, unlockAudio } from './lib/audio/player';
 import './styles/global.css';
 import './styles/app.css';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Root element is missing from index.html');
+
+if (IS_DEMO) {
+  // Uploaded alarm sounds are blob URLs held by the in-browser backend.
+  void import('./lib/demo/api').then(({ demoSoundUrl }) => setSoundUrlResolver(demoSoundUrl));
+}
 
 createRoot(container).render(
   <StrictMode>
@@ -25,7 +31,9 @@ window.addEventListener('keydown', primeAudio, { once: true });
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    // BASE_URL so the worker registers correctly under a project sub-path
+    // such as /reminder/ on GitHub Pages.
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       // Offline support and background notifications are a bonus; the app
       // works without them.
     });

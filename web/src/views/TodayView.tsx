@@ -175,7 +175,7 @@ export function TodayView() {
                 </ProgressRing>
                 <span className="grow truncate">{scored.item.title}</span>
                 <span className="focus-line__reasons">
-                  {scored.reasons.slice(0, 2).map((reason) => (
+                  {scored.reasons.slice(0, 1).map((reason) => (
                     <span key={reason.code} className="chip chip--tiny">
                       {dict.reason[reason.code as keyof typeof dict.reason]?.replace('{detail}', reason.detail ?? '') ??
                         reason.code}

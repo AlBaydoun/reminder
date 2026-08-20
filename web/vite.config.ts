@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  // GitHub Pages serves a project site from /<repo>/, so the base has to be
+  // set at build time. Defaults to '/' for the normal self-hosted build.
+  base: process.env.VITE_BASE ?? '/',
   server: {
     port: 5173,
     // Proxying keeps the browser on one origin in development, so the

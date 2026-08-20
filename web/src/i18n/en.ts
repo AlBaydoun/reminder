@@ -368,6 +368,15 @@ export const en = {
     deleteForever: 'Delete forever',
     deleteForeverConfirm: 'Permanently delete "{title}"? This cannot be undone.',
   },
+  demo: {
+    badge: 'Demo',
+    title: "You're looking at the live demo",
+    body: 'Everything you do stays in this browser — nothing is sent anywhere. Voice, alarms, drawing and the 3D view all work; only multi-device sync and the server-side nightly backup need the full version.',
+    reset: 'Reset demo',
+    resetConfirm: 'Clear everything in this browser and start the demo again?',
+    source: 'Source code',
+    dismiss: 'Got it',
+  },
   error: {
     generic: 'Something went wrong',
     offline: 'No connection to your server',

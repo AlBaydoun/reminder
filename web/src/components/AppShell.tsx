@@ -9,6 +9,7 @@ import {
   Moon,
   Orbit,
   PenLine,
+  RotateCcw,
   Search,
   Settings,
   Sun,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { api, IS_DEMO } from '../lib/api';
 import { unlockAudio, isAudioUnlocked } from '../lib/audio/player';
 import { useAlarms } from '../store/alarms';
 import { useAuth } from '../store/auth';
@@ -110,10 +112,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Settings size={19} />
             <span className="rail__label">{dict.nav.settings}</span>
           </NavLink>
-          <button className="rail__item" onClick={() => void signOut()} title={dict.nav.signOut}>
-            <LogOut size={19} />
-            <span className="rail__label">{dict.nav.signOut}</span>
-          </button>
+          {IS_DEMO ? (
+            <button
+              className="rail__item"
+              title={dict.demo.reset}
+              onClick={async () => {
+                if (!window.confirm(dict.demo.resetConfirm)) return;
+                await api.logout();
+                window.location.reload();
+              }}
+            >
+              <RotateCcw size={19} />
+              <span className="rail__label">{dict.demo.reset}</span>
+            </button>
+          ) : (
+            <button className="rail__item" onClick={() => void signOut()} title={dict.nav.signOut}>
+              <LogOut size={19} />
+              <span className="rail__label">{dict.nav.signOut}</span>
+            </button>
+          )}
         </div>
       </nav>
 

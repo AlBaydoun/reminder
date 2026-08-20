@@ -525,6 +525,14 @@
 .focus-line__reasons {
   display: flex;
   gap: 5px;
+  /* Let the reasons give way before the title does — the name of the task is
+     what the reader needs first. */
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+.focus-line > .grow {
+  min-width: 96px;
 }
 
 /* ── Focus cards ────────────────────────────────────────────────────────── */
@@ -1673,5 +1681,60 @@
   }
   .toast-stack {
     bottom: 92px;
+  }
+}
+
+/* ── Demo notice (published build only) ─────────────────────────────────── */
+.demo-notice {
+  position: fixed;
+  bottom: 22px;
+  inset-inline-start: 22px;
+  z-index: 86;
+  display: flex;
+  gap: 12px;
+  padding: 16px 18px;
+  width: min(430px, calc(100% - 44px));
+}
+.demo-notice__icon {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.demo-notice > .grow {
+  min-width: 0;
+}
+.demo-notice p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+}
+.demo-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.demo-chip {
+  position: fixed;
+  bottom: 22px;
+  inset-inline-start: 22px;
+  z-index: 86;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #04050d;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  box-shadow: 0 4px 18px var(--accent-glow);
+}
+@media (max-width: 900px) {
+  .demo-notice,
+  .demo-chip {
+    bottom: 90px;
+  }
+  .demo-notice {
+    inset-inline-start: 12px;
+    width: calc(100% - 24px);
   }
 }

@@ -11,8 +11,13 @@
  * than showing an honest "no connection".
  */
 
-const VERSION = 'nexus-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const VERSION = 'nexus-v2';
+
+// Paths are derived from the worker's own scope so the same file works both at
+// the site root and under a project sub-path like /reminder/ on GitHub Pages.
+const BASE = new URL('./', self.location).pathname;
+const INDEX = `${BASE}index.html`;
+const SHELL = [BASE, INDEX, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`, `${BASE}icon-192.png`, `${BASE}icon-512.png`];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -45,7 +50,7 @@ self.addEventListener('fetch', (event) => {
   // Navigations: try the network, fall back to the cached shell.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/index.html').then((hit) => hit ?? Response.error())),
+      fetch(request).catch(() => caches.match(INDEX).then((hit) => hit ?? Response.error())),
     );
     return;
   }
@@ -63,7 +68,7 @@ self.addEventListener('fetch', (event) => {
             }
             return response;
           })
-          .catch(() => caches.match('/index.html').then((fallback) => fallback ?? Response.error())),
+          .catch(() => caches.match(INDEX).then((fallback) => fallback ?? Response.error())),
     ),
   );
 });
@@ -80,7 +85,7 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus();
         }
       }
-      return self.clients.openWindow('/');
+      return self.clients.openWindow(BASE);
     }),
   );
 });

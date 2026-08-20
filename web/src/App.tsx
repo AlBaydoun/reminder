@@ -5,6 +5,7 @@ import { AlarmOverlay } from './components/AlarmOverlay';
 import { AppShell } from './components/AppShell';
 import { AuthScreen } from './components/AuthScreen';
 import { CommandPalette } from './components/CommandPalette';
+import { DemoBanner } from './components/DemoBanner';
 import { ItemDetail } from './components/ItemDetail';
 import { Toasts } from './components/Toasts';
 import { VoicePanel } from './components/VoicePanel';
@@ -79,7 +80,7 @@ function SignedInApp() {
   }, [refresh]);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AppShell>{loaded ? <AnimatedRoutes /> : <CenteredSpinner />}</AppShell>
       <ItemDetail />
       <CommandPalette />
@@ -117,6 +118,7 @@ export default function App() {
       {status === 'signed-in' && <SignedInApp />}
 
       <AlarmOverlay />
+      <DemoBanner />
       <Toasts />
     </>
   );

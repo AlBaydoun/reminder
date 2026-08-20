@@ -1,5 +1,8 @@
 # Nexus
 
+**[▶ Try the live demo](https://albaydoun.github.io/reminder/)** — no sign-up,
+nothing to install. Everything you do stays in your own browser.
+
 A voice-driven to-do list and reminder system built around one idea:
 
 > **A category and a task are the same thing.**
@@ -25,6 +28,31 @@ date, a repeat rule, notes and sketches.
 | **3D Galaxy** | Categories as living worlds. Size tracks how much is inside, a ring shows completion, overdue worlds pulse, and tasks orbit as moons. |
 | **Backups** | A full copy of every account is written every night, plus a byte-exact database snapshot. Rotation, restore-with-safety-copy, manual export and import. |
 | **Languages** | English, العربية (full RTL) and Русский — interface *and* voice grammar. |
+
+---
+
+## The live demo
+
+<https://albaydoun.github.io/reminder/>
+
+GitHub Pages serves static files only, so it cannot run the Node/SQLite server.
+The published build therefore swaps the API client for an implementation of the
+**same surface** backed by IndexedDB (`VITE_DEMO=true`), so the page is the real
+app with a backend that lives in your browser. TypeScript checks that swap: the
+demo backend is assigned to `typeof serverApi`, so it cannot drift from the real
+client without failing the build.
+
+Working in the demo: voice commands, alarms with all twelve synthesized tones
+and your own uploaded sounds, the pen recognizer, the 3D Galaxy, every reasoning
+view, local snapshots and export/import. It opens on a seeded workspace with
+real dates so no panel is empty, and **Reset demo** wipes it.
+
+Not in the demo, and said so on the page rather than discovered by losing
+something: syncing between devices, and the nightly backup — that is a server
+cron job, so the demo offers on-demand local snapshots instead.
+
+Build it yourself with `npm run build:demo` (`VITE_BASE` sets the sub-path), or
+`npm run preview:demo` to serve it locally.
 
 ---
 
@@ -193,10 +221,16 @@ web/
     views/                 today, galaxy, list, focus, timeline,
                            alarms, draw, insights, settings, trash
     i18n/                  en, ar, ru
+    lib/
+      api.ts               picks the backend at build time
+      serverApi.ts         talks to the Node server
+      demo/                the whole backend, in the browser (Pages build)
 scripts/
   nlp-check.ts             22 utterances, 3 languages
   recognition-check.ts     12 shapes with simulated hand jitter
   make-icons.mjs           PWA icons, generated (no image dependency)
+.github/workflows/
+  pages.yml                typecheck, test, build the demo, deploy to Pages
 ```
 
 ---
@@ -222,6 +256,8 @@ scripts/
   platform has no handwriting engine.
 - **Single server, single region.** No multi-device conflict resolution beyond
   last-write-wins; the server is the single source of truth.
+- **The demo is per-browser.** Clearing site data clears the workspace, and
+  nothing syncs. Run the server build for real use.
 
 ## Next
 

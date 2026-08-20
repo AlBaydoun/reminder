@@ -1,6 +1,18 @@
 import { VOICES, isBuiltinKey, type BuiltinKey } from './synth';
 
 /**
+ * How to reach an uploaded sound. The server build fetches it from the API;
+ * the static demo has no API, so it registers a blob URL instead. Whichever
+ * backend is in play installs its resolver here at start-up.
+ */
+type SoundUrlResolver = (soundId: string) => string | undefined;
+let resolveSoundUrl: SoundUrlResolver = (soundId) => `/api/sounds/${soundId}/audio`;
+
+export function setSoundUrlResolver(resolver: SoundUrlResolver) {
+  resolveSoundUrl = resolver;
+}
+
+/**
  * One place that owns sound playback: built-in synthesized tones and uploaded
  * audio files behave identically to callers.
  *
@@ -137,7 +149,11 @@ export function playSound(
     return playBuiltin(isBuiltinKey(key) ? key : fallback, volume, loop);
   }
   if (isBuiltinKey(soundId)) return playBuiltin(soundId, volume, loop);
-  return playFile(`/api/sounds/${soundId}/audio`, volume, loop);
+
+  const url = resolveSoundUrl(soundId);
+  // A sound whose file has gone missing should still ring, just with the
+  // default tone — silence would look like a broken alarm.
+  return url ? playFile(url, volume, loop) : playBuiltin(fallback, volume, loop);
 }
 
 /** Short confirmation blips used by the UI itself, independent of alarms. */
