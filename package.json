@@ -1,0 +1,27 @@
+{
+  "name": "nexus-reminder",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Nexus \u2014 a voice-driven, 3D to-do list and reminder system",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace server run build && npm --workspace web run build",
+    "start": "npm --workspace server run start",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
+    "test:nlp": "tsx scripts/nlp-check.ts",
+    "test": "npm run test:nlp"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

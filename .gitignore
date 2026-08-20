@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+*.log
+
+# Runtime data: the SQLite database, nightly backups and the dev JWT secret.
+server/data/
+data/
+
+.env
+.env.local
+.DS_Store
+*.tsbuildinfo
+.vite/
+coverage/

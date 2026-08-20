@@ -1,0 +1,93 @@
+/* ── Nexus design tokens ────────────────────────────────────────────────────
+   One dark, deep-space palette with neon accents. Every colour is a token so
+   category tinting and the light theme can re-map them without touching
+   component CSS. Logical properties (inline-start/end) everywhere so the
+   Arabic RTL layout is a direction flip, not a second stylesheet.          */
+
+:root {
+  --bg-void: #05060f;
+  --bg-deep: #080a18;
+  --bg-panel: rgba(19, 22, 44, 0.72);
+  --bg-panel-solid: #131628;
+  --bg-raised: rgba(38, 42, 74, 0.6);
+  --bg-input: rgba(10, 12, 26, 0.75);
+
+  --stroke: rgba(140, 155, 255, 0.14);
+  --stroke-strong: rgba(150, 165, 255, 0.3);
+  --stroke-focus: rgba(124, 231, 255, 0.75);
+
+  --text: #eef1ff;
+  --text-dim: #a4abd4;
+  --text-faint: #6f76a3;
+
+  --accent: #7ce7ff;
+  --accent-2: #a68bff;
+  --accent-3: #ff7ce0;
+  --accent-glow: rgba(124, 231, 255, 0.45);
+
+  --ok: #3ddc97;
+  --warn: #ffc46b;
+  --danger: #ff6b8a;
+  --urgent: #ff4d6d;
+
+  --p0: #6f76a3;
+  --p1: #7ce7ff;
+  --p2: #a68bff;
+  --p3: #ffc46b;
+  --p4: #ff4d6d;
+
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 40px var(--accent-glow);
+
+  --blur: saturate(150%) blur(22px);
+
+  --font: 'Outfit', 'Noto Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --header-h: 68px;
+  --rail-w: 88px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Arabic reads better a touch larger and with more line height. */
+:root[lang='ar'] {
+  --font: 'Noto Sans Arabic', 'Outfit', system-ui, sans-serif;
+  --body-size: 16.5px;
+  --line: 1.75;
+}
+
+:root[data-theme='light'] {
+  --bg-void: #eef1fb;
+  --bg-deep: #e4e8f7;
+  --bg-panel: rgba(255, 255, 255, 0.78);
+  --bg-panel-solid: #ffffff;
+  --bg-raised: rgba(255, 255, 255, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.9);
+
+  --stroke: rgba(40, 50, 120, 0.14);
+  --stroke-strong: rgba(40, 50, 120, 0.26);
+
+  --text: #131731;
+  --text-dim: #4b5484;
+  --text-faint: #7b83ac;
+
+  --accent: #0a8fb8;
+  --accent-2: #6b45e0;
+  --accent-3: #d13fa8;
+  --accent-glow: rgba(10, 143, 184, 0.28);
+
+  --shadow: 0 18px 50px rgba(30, 40, 90, 0.16);
+}
+
+/* The "calm" setting strips the spectacle for low-end phones and for anyone
+   who finds constant motion tiring, without changing the layout. */
+:root[data-motion='calm'] {
+  --shadow-glow: none;
+}
