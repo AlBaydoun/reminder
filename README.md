@@ -52,7 +52,9 @@ something: syncing between devices, and the nightly backup — that is a server
 cron job, so the demo offers on-demand local snapshots instead.
 
 Build it yourself with `npm run build:demo` (`VITE_BASE` sets the sub-path), or
-`npm run preview:demo` to serve it locally.
+`npm run preview:demo` to serve it locally. Pushing to the default branch
+rebuilds and republishes it through `.github/workflows/pages.yml`, gated behind
+the typecheck and both test suites.
 
 ---
 

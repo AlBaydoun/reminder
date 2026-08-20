@@ -3,6 +3,13 @@ name: Deploy demo to GitHub Pages
 # The published demo is the full app with an in-browser backend
 # (VITE_DEMO=true), because GitHub Pages serves static files only and cannot
 # run the Node/SQLite server. Everything a visitor does stays in their browser.
+#
+# It publishes by pushing the built site to the `gh-pages` branch, which is the
+# source Pages is configured from. The Actions-native deploy path was tried
+# first and could not be used: `actions/configure-pages` needs to *create* the
+# Pages site on the first run, and the default GITHUB_TOKEN is not permitted to
+# do that ("Resource not accessible by integration"). Pushing a branch needs
+# only `contents: write`, which the default token does have.
 
 on:
   push:
@@ -14,17 +21,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 # Let a running deploy finish rather than cancelling it half-published.
 concurrency:
-  group: pages
+  group: pages-deploy
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,30 +48,27 @@ jobs:
       - name: Test the voice parser and shape recognizer
         run: npm test
 
-      # `enablement: true` turns Pages on for the repository on the first run,
-      # so no manual switch is needed in Settings.
-      - name: Configure Pages
-        id: pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - name: Build the demo
         env:
-          # base_path already carries the /<repo>/ prefix Pages serves from.
-          VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+          # Pages serves a project site from /<repo>/.
+          VITE_BASE: /${{ github.event.repository.name }}/
         run: npm run build:demo
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd web/dist
+          # Source maps are 4 MB of payload and help nobody on a public demo.
+          rm -f assets/*.map
+          # Jekyll would otherwise drop files and folders starting with "_".
+          touch .nojekyll
+          git init -q -b gh-pages
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy demo from ${GITHUB_SHA::7}"
+          git push -q --force \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+          echo "Published https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
