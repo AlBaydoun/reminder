@@ -328,12 +328,21 @@ function onServiceWorkerMessage(event: MessageEvent) {
 type SetState = (partial: Partial<AlarmState> | ((s: AlarmState) => Partial<AlarmState>)) => void;
 type GetState = () => AlarmState;
 
+/** Has this task been finished since the alarm list was last fetched? */
+function isDone(itemId: string): boolean {
+  return useData.getState().items.some((i) => i.id === itemId && i.status === 'done');
+}
+
 function tick(set: SetState, get: GetState) {
   const state = get();
   const now = Date.now() + state.serverOffsetMs;
 
   for (const reminder of state.armed) {
     if (!reminder.nextFireAt) continue;
+    // The armed list is only as fresh as the last poll. Completing a task
+    // seconds before its alarm should silence it immediately, not a minute
+    // later, so check the task's live state rather than the arming snapshot.
+    if (isDone(reminder.item.id)) continue;
     const fireAt = new Date(reminder.nextFireAt).getTime();
 
     // Pre-alerts: a quiet heads-up N minutes before the real alarm.

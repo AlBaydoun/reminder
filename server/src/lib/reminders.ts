@@ -153,6 +153,11 @@ export function dueReminders(userId: string, lookaheadMs = 0, now = new Date()) 
          AND r.deleted_at IS NULL
          AND i.deleted_at IS NULL
          AND r.status != 'done'
+         -- A finished task must not keep ringing. Completing a *repeating*
+         -- task rolls it forward and returns it to 'open', so this only
+         -- silences the ones that are genuinely over, and reopening one
+         -- brings its alarm back.
+         AND i.status != 'done'
          AND r.next_fire_at IS NOT NULL
          AND r.next_fire_at <= ?
        ORDER BY r.next_fire_at ASC`,

@@ -375,9 +375,17 @@ function restoreFrom(s: DemoState, payload: any, mode: 'replace' | 'merge') {
 }
 
 /** Attach the item each due reminder belongs to, as the server's endpoint does. */
-function withItem(s: DemoState, reminder: Reminder): DueReminder | null {
+function withItem(
+  s: DemoState,
+  reminder: Reminder,
+  options: { skipDone?: boolean } = {},
+): DueReminder | null {
   const item = s.items.find((i) => i.id === reminder.itemId && !i.deletedAt);
   if (!item) return null;
+  // A finished task must not keep ringing. Completing a repeating task rolls
+  // it forward and returns it to 'open', so only the ones genuinely over go
+  // quiet, and reopening one brings its alarm back.
+  if (options.skipDone && item.status === 'done') return null;
   return {
     ...reminder,
     item: { id: item.id, title: item.title, icon: item.icon, color: item.color, status: item.status },
@@ -568,7 +576,7 @@ export const api = {
     const horizon = Date.now() + lookaheadMs;
     const due = s.reminders
       .filter((r) => r.status !== 'done' && r.nextFireAt && new Date(r.nextFireAt).getTime() <= horizon)
-      .map((r) => withItem(s, r))
+      .map((r) => withItem(s, r, { skipDone: true }))
       .filter((r): r is DueReminder => Boolean(r));
     return settle({ due, serverTime: nowIso() });
   },
@@ -583,7 +591,7 @@ export const api = {
         const at = new Date(r.nextFireAt).getTime();
         return at > now && at <= horizon;
       })
-      .map((r) => withItem(s, r))
+      .map((r) => withItem(s, r, { skipDone: true }))
       .filter((r): r is DueReminder => Boolean(r));
     return settle({ upcoming, serverTime: nowIso() });
   },

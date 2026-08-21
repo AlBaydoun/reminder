@@ -28,12 +28,18 @@ export function NextAlarmBar() {
   const now = useNow(30_000);
 
   const next = useMemo(() => {
-    const soonest = reminders
-      .filter((reminder) => reminder.nextFireAt && new Date(reminder.nextFireAt).getTime() > now)
-      .sort((a, b) => (a.nextFireAt ?? '').localeCompare(b.nextFireAt ?? ''))[0];
-    if (!soonest) return null;
-    const item = items.find((i) => i.id === soonest.itemId && !i.deletedAt);
-    return item ? { reminder: soonest, item } : null;
+    const byId = new Map(items.filter((i) => !i.deletedAt).map((i) => [i.id, i]));
+    for (const reminder of [...reminders].sort((a, b) =>
+      (a.nextFireAt ?? '').localeCompare(b.nextFireAt ?? ''),
+    )) {
+      if (!reminder.nextFireAt || new Date(reminder.nextFireAt).getTime() <= now) continue;
+      const item = byId.get(reminder.itemId);
+      // A finished task is not something still to come; skip past it to the
+      // next alarm that actually matters rather than showing an empty bar.
+      if (!item || item.status === 'done') continue;
+      return { reminder, item };
+    }
+    return null;
   }, [reminders, items, now]);
 
   // While something is actually ringing, the alarm screen has the floor.

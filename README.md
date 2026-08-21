@@ -166,6 +166,11 @@ server when nothing is loaded yet, which is the whole point of the button.
 A repeating task rolls forward instead of ending. Dismissing a notification
 stops the ring.
 
+Finishing a task silences its alarm — at the query, so the server, the demo
+backend and the client all agree — and reopening it brings the alarm back.
+Completing a *repeating* task rolls it forward rather than ending it, so only
+the alarms that are genuinely over go quiet.
+
 The next alarm is pinned to the header wherever you are in the app, counting
 down, and a **health panel** on the alarms screen lists every reason an alarm
 might not reach you — notification permission, whether sound has been unlocked
