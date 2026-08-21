@@ -161,7 +161,10 @@ sirens and radar.
 Notifications carry **Snooze** and **Done** buttons. The service worker handles
 the tap itself: with the app open it messages the tab, and with the app closed
 it reopens it with the action in the URL, so pressing *Done* on a lock screen
-completes the task either way. Dismissing a notification stops the ring.
+completes the task either way — the closed case resolves the task from the
+server when nothing is loaded yet, which is the whole point of the button.
+A repeating task rolls forward instead of ending. Dismissing a notification
+stops the ring.
 
 The next alarm is pinned to the header wherever you are in the app, counting
 down, and a **health panel** on the alarms screen lists every reason an alarm

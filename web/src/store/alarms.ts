@@ -245,17 +245,22 @@ export const useAlarms = create<AlarmState>((set, get) => ({
   },
 
   async completeFromAlarm(reminderId) {
-    const entry = get().ringing.find((r) => r.reminder.id === reminderId);
     clearAudio(reminderId);
     clearNotification(reminderId);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
-    if (entry) {
-      await useData.getState().toggleComplete(entry.reminder.itemId, true);
+
+    const itemId = await resolveItemId(reminderId, get);
+    if (itemId) {
+      await useData.getState().toggleComplete(itemId, true);
       try {
         await api.dismissReminder(reminderId);
       } catch {
         /* non-fatal */
       }
+    } else {
+      // Nothing to complete means nothing to acknowledge either; leave the
+      // reminder alone rather than silently swallowing it.
+      useUi.getState().toast(useUi.getState().t('error.generic'), 'error');
     }
     await get().sync();
   },
@@ -271,6 +276,29 @@ export const useAlarms = create<AlarmState>((set, get) => ({
 
 function onVisibility() {
   if (document.visibilityState === 'visible') void useAlarms.getState().sync();
+}
+
+/**
+ * Which task does this reminder belong to?
+ *
+ * Pressing "Done" on a lock-screen notification opens the app cold, so none of
+ * the in-memory lists exist yet — reading only from `ringing` here meant the
+ * one path the button exists for was the one path that did nothing. Look
+ * through what is loaded, then go to the server, and only then give up.
+ */
+async function resolveItemId(reminderId: string, get: () => AlarmState): Promise<string | null> {
+  const ringing = get().ringing.find((r) => r.reminder.id === reminderId);
+  if (ringing) return ringing.reminder.itemId;
+
+  const known = useData.getState().reminders.find((r) => r.id === reminderId);
+  if (known) return known.itemId;
+
+  try {
+    const remote = await api.listReminders();
+    return remote.find((r) => r.id === reminderId)?.itemId ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Carry out a button pressed on a system notification. */
