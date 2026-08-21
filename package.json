@@ -33,7 +33,6 @@
   "devDependencies": {
     "concurrently": "^9.1.2",
     "esbuild": "^0.28.2",
-    "playwright": "^1.62.1",
     "tsx": "^4.19.2"
   },
   "engines": {

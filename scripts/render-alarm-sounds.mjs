@@ -10,7 +10,6 @@
  * still exactly one, and the alarm on the phone is the alarm in the browser.
  */
 import { build } from 'esbuild';
-import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -116,6 +115,26 @@ const RENDER_IN_PAGE = async ({ targetSeconds, sampleRate }) => {
   }
   return out;
 };
+
+/**
+ * Playwright is not a dependency of this project.
+ *
+ * Rendering the tones is a rare maintenance task — they are committed, so a
+ * normal build and CI never need it — and making every install pull a few
+ * hundred megabytes of browser for one script would be a poor trade. It is
+ * asked for only when this script actually runs.
+ */
+let chromium;
+try {
+  ({ chromium } = await import('playwright'));
+} catch {
+  console.error(
+    'This script renders audio through a real Web Audio implementation, which needs a browser.\n' +
+      'Install it just for this:  npm i -D playwright && npx playwright install chromium\n' +
+      '(The tones are committed in assets/alarm-tones, so you only need this to change them.)',
+  );
+  process.exit(1);
+}
 
 const bundle = await bundleSynth();
 
