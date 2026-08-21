@@ -249,9 +249,16 @@ reboot, and the activity is allowed to show over the lock screen.
 
 A notification sound plays once, so an escalating alarm queues a short run of
 follow-ups behind the first one and cancels them the moment it is acknowledged.
-That is also why every notification id is derived from the reminder *and* its
-occurrence rather than being random: they have to be findable again to be
-cancelled, and a repeating alarm's Tuesday must not overwrite its Monday.
+
+Notification ids are the sharp edge. Android addresses them with a signed
+32-bit integer, and the obvious approach — hash the reminder id together with
+its occurrence — is wrong: the birthday bound puts a collision at roughly a
+quarter for a few tens of thousands of ids, and a collision means two alarms
+share an id, one silently replaces the other, and an alarm never rings. That is
+the one failure this app cannot have. Ids are therefore *allocated* from a
+counter and remembered, so collisions are impossible rather than unlikely, and
+the stored map is what lets an alarm be found again to cancel it. It was CI
+that caught the hashed version; it had passed locally by luck.
 
 The tones are the same ones the browser synthesizes. The OS plays a file, from
 disk, while the app is not running — so `npm run sounds` renders each voice
@@ -378,7 +385,7 @@ web/
       native/              the line between the web app and the phone
         bridge.ts          which platform this is; loads plugins on demand
         alarms.ts          hands the schedule to the OS
-        alarmIds.ts        stable notification ids (pure, and tested)
+        alarmIds.ts        allocated notification ids (pure, and tested)
         sounds.ts          tone files and Android notification channels
         deviceSounds.ts    the phone's own ringtones and files
         listeners.ts       Snooze/Done pressed outside the app
@@ -400,7 +407,7 @@ scripts/
   nlp-check.ts             22 utterances, 3 languages
   recognition-check.ts     12 shapes with simulated hand jitter
   handwriting-check.ts     10 handwritten phrases, 90% character-accuracy floor
-  native-alarm-check.ts    the OS notification plan: ids, coverage, collisions
+  native-alarm-check.ts    notification ids: uniqueness, cancel coverage, pruning
   render-alarm-sounds.mjs  renders the synth to WAV for the phone builds
   install-alarm-sounds.mjs copies the tones into each platform project
   check-alarm-sounds.mjs   every tone is loud, prompt and well-formed
