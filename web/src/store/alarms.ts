@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 import { playSound, vibrate, type PlayHandle } from '../lib/audio/player';
+import { isNative } from '../lib/native/bridge';
+import {
+  cancelNativeAlarm,
+  clearAllNativeAlarms,
+  syncNativeAlarms,
+  type AlarmStrings,
+} from '../lib/native/alarms';
+import { attachNativeListeners, detachNativeListeners } from '../lib/native/listeners';
 import type { DueReminder } from '../lib/types';
 import { useData } from './data';
 import { useUi } from './ui';
@@ -153,6 +161,23 @@ export const useAlarms = create<AlarmState>((set, get) => ({
     window.addEventListener('online', onVisibility);
     navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage);
 
+    // The phone equivalent of the service-worker messages above: a Snooze or
+    // Done pressed on a notification, including one that launched the app.
+    if (isNative()) {
+      void attachNativeListeners({
+        onAction: (action, reminderId) => void runAlarmAction(action, reminderId),
+        onReceived: (reminderId) => {
+          // The OS is already making the noise; this raises the screen that
+          // lets it be acted on, without a second sound on top.
+          const known = get().armed.find((r) => r.id === reminderId);
+          if (known && !get().ringing.some((r) => r.reminder.id === reminderId)) {
+            ring(known, set, get, false);
+          }
+        },
+        onResume: () => void get().sync(),
+      });
+    }
+
     // A notification button pressed while the app was closed opens it with the
     // action in the URL; carry it out now and tidy the address bar.
     const params = new URLSearchParams(window.location.search);
@@ -173,7 +198,9 @@ export const useAlarms = create<AlarmState>((set, get) => ({
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('online', onVisibility);
     navigator.serviceWorker?.removeEventListener('message', onServiceWorkerMessage);
+    detachNativeListeners();
     get().stopAllSound();
+    if (isNative()) void clearAllNativeAlarms();
     set({ running: false, armed: [], ringing: [] });
   },
 
@@ -191,6 +218,11 @@ export const useAlarms = create<AlarmState>((set, get) => ({
         // Guard against a badly wrong device clock, but ignore small jitter.
         serverOffsetMs: Math.abs(offset) > 2000 ? offset : 0,
       });
+
+      // On a phone the operating system, not this ticker, is what actually
+      // rings — the app will not be running when the alarm is due. Handing it
+      // the schedule after every poll is what makes a closed-app alarm work.
+      if (isNative()) void syncNativeAlarms(upcoming.upcoming, alarmStrings());
 
       // Anything already due when we polled fired while we were away.
       for (const reminder of due.due) {
@@ -218,6 +250,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
   async snooze(reminderId, minutes) {
     clearAudio(reminderId);
     clearNotification(reminderId);
+    void clearNativeFor(reminderId, get);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
     try {
       const { snoozedUntil } = await api.snoozeReminder(reminderId, minutes);
@@ -235,6 +268,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
   async dismiss(reminderId) {
     clearAudio(reminderId);
     clearNotification(reminderId);
+    void clearNativeFor(reminderId, get);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
     try {
       await api.dismissReminder(reminderId);
@@ -247,6 +281,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
   async completeFromAlarm(reminderId) {
     clearAudio(reminderId);
     clearNotification(reminderId);
+    void clearNativeFor(reminderId, get);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
 
     const itemId = await resolveItemId(reminderId, get);
@@ -328,6 +363,39 @@ function onServiceWorkerMessage(event: MessageEvent) {
 type SetState = (partial: Partial<AlarmState> | ((s: AlarmState) => Partial<AlarmState>)) => void;
 type GetState = () => AlarmState;
 
+/**
+ * The words the OS shows on a notification.
+ *
+ * Read from the live dictionary each time rather than captured once: the OS
+ * copy is written when the alarm is scheduled, and a person who switches the
+ * app to Arabic should not keep getting English alarms for the next two days.
+ */
+function alarmStrings(): AlarmStrings {
+  const ui = useUi.getState();
+  return {
+    alarmBody: ui.t('reminder.due'),
+    stillWaiting: ui.t('reminder.stillWaiting'),
+    snooze: ui.t('reminder.snooze'),
+    done: ui.t('item.complete'),
+    inMinutes: (n: number) => ui.t('common.minutes', { n }),
+  };
+}
+
+/**
+ * Take one alarm out of the OS's hands.
+ *
+ * Called whenever an alarm is acknowledged in the app. Without it, snoozing an
+ * alarm on screen would leave the operating system's copy — and its queued
+ * follow-ups — to go off anyway a moment later.
+ */
+async function clearNativeFor(reminderId: string, get: () => AlarmState) {
+  if (!isNative()) return;
+  const known =
+    get().ringing.find((r) => r.reminder.id === reminderId)?.reminder ??
+    get().armed.find((r) => r.id === reminderId);
+  if (known) await cancelNativeAlarm(known);
+}
+
 /** Has this task been finished since the alarm list was last fetched? */
 function isDone(itemId: string): boolean {
   return useData.getState().items.some((i) => i.id === itemId && i.status === 'done');
@@ -372,14 +440,27 @@ function ring(reminder: DueReminder, set: SetState, get: GetState, missed: boole
     armed: state.armed.filter((r) => r.id !== reminder.id),
   }));
 
-  const handle = playSound(reminder.soundId, {
-    volume: reminder.volume,
-    // Escalating alarms loop until dismissed; the rest stop by themselves.
-    loop: true,
-  });
-  handles.set(reminder.id, handle);
+  /**
+   * On a phone the operating system is already playing this alarm's sound
+   * from its own scheduled notification. Playing it here as well would give
+   * two copies a fraction of a second apart, which sounds broken and is
+   * louder than either was meant to be — so the app takes the screen and the
+   * OS takes the sound.
+   *
+   * A *missed* alarm is the exception: it is being replayed now because the
+   * app was closed when it was due, so there is no OS sound to collide with.
+   */
+  const osIsRinging = isNative() && !missed;
+  if (!osIsRinging) {
+    const handle = playSound(reminder.soundId, {
+      volume: reminder.volume,
+      // Escalating alarms loop until dismissed; the rest stop by themselves.
+      loop: true,
+    });
+    handles.set(reminder.id, handle);
+  }
 
-  if (reminder.vibrate) {
+  if (reminder.vibrate && !osIsRinging) {
     vibrate([400, 200, 400]);
     vibrateTimers.set(
       reminder.id,
@@ -387,7 +468,9 @@ function ring(reminder: DueReminder, set: SetState, get: GetState, missed: boole
     );
   }
 
-  showNotification(reminder, reminder.label || ui.t('reminder.ringingNow'));
+  // Likewise the notification: the OS already posted one, and a web
+  // Notification on top of it would be the same alarm shown twice.
+  if (!osIsRinging) showNotification(reminder, reminder.label || ui.t('reminder.ringingNow'));
 
   if (!reminder.escalate) {
     autoStopTimers.set(

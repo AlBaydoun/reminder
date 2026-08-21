@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CORS_ORIGINS, IS_PROD, PORT } from './config.js';
+import { CORS_ORIGINS, IS_PROD, NATIVE_ORIGINS, PORT } from './config.js';
 import { db, nowIso } from './db.js';
 import { sendError } from './lib/http.js';
 import { authRouter } from './routes/auth.js';
@@ -36,7 +36,11 @@ app.use(
     // though it is same-origin, so compare against this server's own host too.
     const host = req.headers.host;
     const selfOrigins = host ? [`http://${host}`, `https://${host}`] : [];
-    const allowed = CORS_ORIGINS.includes(origin) || selfOrigins.includes(origin);
+    const allowed =
+      CORS_ORIGINS.includes(origin) ||
+      selfOrigins.includes(origin) ||
+      // The iOS and Android shells, which have no host of their own.
+      NATIVE_ORIGINS.includes(origin);
 
     // Denying by omitting the headers (rather than throwing) keeps a rejected
     // cross-origin request a clean CORS failure instead of a 500.

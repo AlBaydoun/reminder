@@ -191,11 +191,35 @@ export function playCue(kind: 'success' | 'error' | 'tick' | 'listen') {
   window.setTimeout(() => gain.disconnect(), 500);
 }
 
-/** Best-effort haptics — silently ignored where unsupported. */
+/**
+ * Best-effort haptics — silently ignored where unsupported.
+ *
+ * `navigator.vibrate` is the web's only option and iOS does not implement it,
+ * so on a phone this hands off to the real haptic engine instead. The pattern
+ * is still the argument, because every caller already thinks in patterns; its
+ * total length is what decides how heavy the native tap should be.
+ */
 export function vibrate(pattern: number | number[]) {
-  try {
-    navigator.vibrate?.(pattern);
-  } catch {
-    /* not supported */
-  }
+  const total = Array.isArray(pattern) ? pattern.reduce((a, b) => a + b, 0) : pattern;
+
+  void import('../native/bridge')
+    .then(async ({ isNative }) => {
+      if (!isNative()) {
+        try {
+          navigator.vibrate?.(pattern);
+        } catch {
+          /* not supported */
+        }
+        return;
+      }
+      const { haptic } = await import('../native/shell');
+      await haptic(total >= 600 ? 'heavy' : total >= 200 ? 'medium' : 'light');
+    })
+    .catch(() => {
+      try {
+        navigator.vibrate?.(pattern);
+      } catch {
+        /* not supported */
+      }
+    });
 }

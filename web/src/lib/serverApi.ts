@@ -17,6 +17,7 @@ import type {
   User,
   UserSettings,
 } from './types';
+import { apiUrl, credentialsMode } from './native/endpoint';
 
 export class ApiError extends Error {
   constructor(
@@ -53,7 +54,7 @@ async function refresh(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
-        const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'same-origin' });
+        const res = await fetch(apiUrl('/auth/refresh'), { method: 'POST', credentials: credentialsMode() });
         if (!res.ok) {
           setAccessToken(null);
           return false;
@@ -83,9 +84,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { body, _retried, raw, headers, ...rest } = options;
   const isFormData = body instanceof FormData;
 
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(apiUrl(path), {
     ...rest,
-    credentials: 'same-origin',
+    credentials: credentialsMode(),
     headers: {
       ...(isFormData || body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -260,8 +261,8 @@ export const api = {
       body: form,
     });
   },
-  exportUrl: () => '/api/backups/export',
-  backupDownloadUrl: (id: string) => `/api/backups/${id}/download`,
+  exportUrl: () => apiUrl('/backups/export'),
+  backupDownloadUrl: (id: string) => apiUrl(`/backups/${id}/download`),
 
   health: () => get<{ ok: boolean; serverTime: string; timezone: string }>('/health'),
 };

@@ -2248,3 +2248,67 @@
     display: none;
   }
 }
+
+/* ── Running as a phone app ─────────────────────────────────────────────────
+ *
+ * The insets only exist inside a native shell, and `env()` resolves to 0 in a
+ * browser, so these rules are safe everywhere — but they are scoped to
+ * `.is-native` anyway to keep the web layout exactly as it was.
+ *
+ * The topbar clears the notch and the tab bar clears the home indicator; on a
+ * phone in landscape the side insets matter too, or the first and last tab sit
+ * under the rounded corners.
+ */
+.is-native .topbar {
+  padding-top: calc(14px + var(--safe-top, 0px));
+}
+
+.is-native .tabbar {
+  bottom: calc(10px + var(--safe-bottom, 0px));
+  inset-inline: calc(10px + var(--safe-left, 0px)) calc(10px + var(--safe-right, 0px));
+}
+
+.is-native .view {
+  padding-inline: calc(var(--safe-left, 0px)) calc(var(--safe-right, 0px));
+}
+
+/* The alarm and focus overlays cover the whole screen, notch included. */
+.is-native .alarm-overlay,
+.is-native .focus-overlay {
+  padding-top: var(--safe-top, 0px);
+  padding-bottom: var(--safe-bottom, 0px);
+}
+
+/*
+ * Nothing in the app is text you select by accident, and a long-press that
+ * pops a selection handle in the middle of a drag feels broken. The canvas and
+ * any real input keep normal behaviour.
+ */
+.is-native {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.is-native input,
+.is-native textarea,
+.is-native [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* The rubber-band overscroll belongs to a page, not to an app shell. */
+.is-native body {
+  overscroll-behavior: none;
+}
+
+/*
+ * Touch targets. A 32px button is comfortable with a mouse and a nuisance with
+ * a thumb; the platform guidelines both land near 44.
+ */
+.is-native .btn-sm {
+  min-height: 40px;
+}
+.is-native .icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+}

@@ -7,7 +7,7 @@
  * Run with: npm run icons
  */
 import { deflateSync } from 'node:zlib';
-import { writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -102,10 +102,72 @@ function drawIcon(size) {
   return encodePng(size, size, rgba);
 }
 
+/**
+ * The Android status-bar icon.
+ *
+ * Android draws a notification's small icon as a silhouette: every colour is
+ * discarded and only the alpha channel survives. A full-colour icon therefore
+ * shows up as a white square, which is the single most common way a
+ * notification ends up looking broken. This draws the mark in alpha only.
+ */
+function drawStatusIcon(size) {
+  const rgba = Buffer.alloc(size * size * 4);
+  const centre = size / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const d = (Math.abs(x - centre) + Math.abs(y - centre)) / (size * 0.38);
+      const ring = Math.max(0, Math.min(1, 1 - Math.abs(d - 1) * 6));
+      const core = Math.max(0, Math.min(1, 1 - d * 2.4));
+      rgba[i] = 255;
+      rgba[i + 1] = 255;
+      rgba[i + 2] = 255;
+      rgba[i + 3] = Math.round(Math.max(ring, core) * 255);
+    }
+  }
+  return encodePng(size, size, rgba);
+}
+
 for (const size of [192, 512]) {
   const file = path.join(publicDir, `icon-${size}.png`);
   writeFileSync(file, drawIcon(size));
   console.log('wrote', file);
+}
+
+/**
+ * Launcher and notification icons for the phone builds.
+ *
+ * Written straight into the platform projects, since they are generated
+ * artefacts rather than something anyone should be editing by hand. The
+ * mipmap densities are the standard ladder; Android picks the one that fits
+ * the screen.
+ */
+const androidRes = path.resolve(here, '../web/android/app/src/main/res');
+if (existsSync(androidRes)) {
+  const LAUNCHER = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
+  for (const [density, px] of Object.entries(LAUNCHER)) {
+    const dir = path.join(androidRes, `mipmap-${density}`);
+    mkdirSync(dir, { recursive: true });
+    const icon = drawIcon(px);
+    writeFileSync(path.join(dir, 'ic_launcher.png'), icon);
+    writeFileSync(path.join(dir, 'ic_launcher_round.png'), icon);
+    writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), icon);
+  }
+  // Status-bar icons are sized in dp: 24dp at each density.
+  const STATUS = { mdpi: 24, hdpi: 36, xhdpi: 48, xxhdpi: 72, xxxhdpi: 96 };
+  for (const [density, px] of Object.entries(STATUS)) {
+    const dir = path.join(androidRes, `drawable-${density}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'ic_stat_nexus.png'), drawStatusIcon(px));
+  }
+  console.log('wrote Android launcher and notification icons');
+}
+
+const iosAssets = path.resolve(here, '../web/ios/App/App/Assets.xcassets/AppIcon.appiconset');
+if (existsSync(iosAssets)) {
+  // A single 1024px master; Xcode derives the rest from it.
+  writeFileSync(path.join(iosAssets, 'AppIcon-512@2x.png'), drawIcon(1024));
+  console.log('wrote iOS app icon');
 }
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">

@@ -13,3 +13,25 @@ data/
 *.tsbuildinfo
 .vite/
 coverage/
+
+# ── Native builds ──────────────────────────────────────────────────────────
+# The platform projects are committed — they carry the manifest, the plugins
+# and the icons — but their build output and local machine paths are not.
+web/android/local.properties
+web/android/.gradle/
+web/android/build/
+web/android/app/build/
+web/android/app/src/main/assets/public/
+web/android/app/src/main/assets/capacitor.config.json
+web/android/app/src/main/assets/capacitor.plugins.json
+web/ios/App/App/public/
+# Alarm tones are copied in from assets/alarm-tones at build time.
+web/android/app/src/main/res/raw/
+web/ios/App/App/sounds/
+web/ios/App/App/capacitor.config.json
+web/ios/App/Pods/
+web/ios/App/Podfile.lock
+web/ios/App/App/Package.swift
+DerivedData/
+*.xcuserstate
+xcuserdata/

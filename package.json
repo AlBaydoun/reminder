@@ -2,7 +2,7 @@
   "name": "nexus-reminder",
   "private": true,
   "version": "1.0.0",
-  "description": "Nexus \u2014 a voice-driven, 3D to-do list and reminder system",
+  "description": "Nexus — a voice-driven, 3D to-do list and reminder system",
   "workspaces": [
     "server",
     "web"
@@ -15,15 +15,25 @@
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
     "test:nlp": "tsx scripts/nlp-check.ts",
-    "test": "npm run test:nlp && npm run test:recognition && npm run test:handwriting",
+    "test": "npm run test:nlp && npm run test:recognition && npm run test:handwriting && npm run test:alarms",
     "test:recognition": "tsx scripts/recognition-check.ts",
     "icons": "node scripts/make-icons.mjs",
     "build:demo": "VITE_DEMO=true VITE_BASE=${VITE_BASE:-/reminder/} npm --workspace web run build && cp web/dist/index.html web/dist/404.html",
     "preview:demo": "npm run build:demo && npx --yes serve -s web/dist -l 4173",
-    "test:handwriting": "tsx scripts/handwriting-check.ts"
+    "test:handwriting": "tsx scripts/handwriting-check.ts",
+    "build:mobile": "node scripts/install-alarm-sounds.mjs && VITE_NATIVE=true VITE_BASE=/ npm --workspace web run build",
+    "mobile:sync": "npm run build:mobile && npm --workspace web exec cap sync",
+    "mobile:android": "npm run mobile:sync && npm --workspace web exec cap open android",
+    "mobile:ios": "npm run mobile:sync && npm --workspace web exec cap open ios",
+    "mobile:run:android": "npm run mobile:sync && npm --workspace web exec cap run android",
+    "test:alarms": "tsx scripts/native-alarm-check.ts",
+    "test:sounds": "node scripts/check-alarm-sounds.mjs",
+    "sounds": "node scripts/render-alarm-sounds.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.62.1",
     "tsx": "^4.19.2"
   },
   "engines": {

@@ -58,3 +58,24 @@ export const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+
+/**
+ * The origins a Capacitor build sends.
+ *
+ * A native app is not a web page: its bundle is served from inside the app, so
+ * the browser stamps a fixed scheme-based origin on every request — iOS uses
+ * `capacitor://localhost` and Android uses `https://localhost`.
+ *
+ * `http://localhost` is deliberately not here. It looks like it belongs, but
+ * plain-http localhost is shared ground: every local dev server and every
+ * other app the user runs on their own machine lives there, and listing it
+ * would let any of them make credentialed calls to this API. The native shells
+ * never use it, so it buys nothing. The web dev server gets its own entry
+ * through CORS_ORIGIN instead, port and all.
+ *
+ * Set NATIVE_ORIGINS=off to refuse these on a server that has no phone clients.
+ */
+export const NATIVE_ORIGINS =
+  process.env.NATIVE_ORIGINS === 'off'
+    ? []
+    : ['capacitor://localhost', 'ionic://localhost', 'https://localhost'];

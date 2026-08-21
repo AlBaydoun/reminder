@@ -1,15 +1,28 @@
-import { Music4, Play, Square, Trash2, Upload } from 'lucide-react';
+import { Music4, Play, Smartphone, Square, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { playSound, unlockAudio, type PlayHandle } from '../lib/audio/player';
 import { formatBytes } from '../lib/text';
+import {
+  deviceSoundId,
+  deviceSoundKind,
+  deviceSoundsAvailable,
+  isDeviceSound,
+  pickDeviceSound,
+  previewDeviceSound,
+  stopDeviceSoundPreview,
+} from '../lib/native/deviceSounds';
 import { useData } from '../store/data';
 import { useTranslation, useUi } from '../store/ui';
 
 /**
- * Choose an alarm tone: a synthesized built-in, or any audio file. On a phone
- * the file input opens the device's own music and ringtone library, which is
- * what "a sound from inside the phone" means in a browser.
+ * Choose an alarm tone.
+ *
+ * Three sources, in order of how directly they answer "a sound from inside the
+ * phone": the synthesized built-ins, a sound taken straight off the device,
+ * and an uploaded file. The middle one only exists in the phone builds — a
+ * browser cannot read the ringtones a phone already has, and the file input it
+ * does offer is the nearest thing it can do.
  */
 export function SoundPicker({
   value,
@@ -28,6 +41,8 @@ export function SoundPicker({
 
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  // The name the phone gave the picked sound; a content URI is unreadable.
+  const [deviceName, setDeviceName] = useState<string | null>(null);
   const handle = useRef<PlayHandle | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -38,14 +53,38 @@ export function SoundPicker({
 
   async function preview(soundId: string) {
     handle.current?.stop();
+    void stopDeviceSoundPreview();
     if (previewing === soundId) {
       setPreviewing(null);
       return;
     }
+
+    // A sound owned by the phone can only be played by the phone: the web
+    // layer has no readable URL for a content:// URI or a file in the app's
+    // own Sounds directory.
+    if (isDeviceSound(soundId)) {
+      const played = await previewDeviceSound(soundId);
+      if (!played) {
+        toast(dict.reminder.deviceSoundUnavailable, 'error');
+        return;
+      }
+      setPreviewing(soundId);
+      window.setTimeout(() => setPreviewing((c) => (c === soundId ? null : c)), 4000);
+      return;
+    }
+
     await unlockAudio();
     handle.current = playSound(soundId, { volume, loop: false });
     setPreviewing(soundId);
     window.setTimeout(() => setPreviewing((current) => (current === soundId ? null : current)), 4000);
+  }
+
+  async function pickFromPhone() {
+    const picked = await pickDeviceSound(value);
+    if (picked.cancelled || !picked.uri) return;
+    setDeviceName(picked.name ?? null);
+    onChange(deviceSoundId(picked.uri));
+    toast(dict.reminder.deviceSoundPicked, 'success');
   }
 
   async function upload(file: File) {
@@ -101,6 +140,25 @@ export function SoundPicker({
           <Row key={sound.key} id={`builtin:${sound.key}`} name={sound.name} meta={sound.character} />
         ))}
       </div>
+
+      {deviceSoundsAvailable() && (
+        <>
+          <p className="sound-picker__group faint">{dict.reminder.deviceSound}</p>
+          <div className="sound-picker__list">
+            {isDeviceSound(value) && (
+              <Row
+                id={value as string}
+                name={deviceName ?? dict.reminder.deviceSound}
+                meta={deviceSoundKind() === 'ringtones' ? 'ringtone' : 'file'}
+              />
+            )}
+          </div>
+          <button className="btn" onClick={() => void pickFromPhone()}>
+            <Smartphone size={15} />
+            {dict.reminder.pickDeviceSound}
+          </button>
+        </>
+      )}
 
       <p className="sound-picker__group faint">{dict.reminder.customSounds}</p>
       <div className="sound-picker__list">

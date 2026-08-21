@@ -31,6 +31,7 @@ date, a repeat rule, notes and sketches.
 | **Brushes & fonts** | Fifteen brushes — fineliner, ballpoint, fountain, calligraphy, brush pen, marker, pencil, charcoal, crayon, highlighter, airbrush, neon, dashed, ribbon, eraser — driven by pressure, tilt and speed, each in any colour you choose. Forty-one typefaces for the canvas text tool and the interface. Draw a checkmark to complete a task, a star to pin it, a strike to delete it. |
 | **3D Galaxy** | Categories as living worlds. Size tracks how much is inside, a ring shows completion, overdue worlds pulse, and tasks orbit as moons. |
 | **Backups** | A full copy of every account is written every night, plus a byte-exact database snapshot. Rotation, restore-with-safety-copy, manual export and import. |
+| **Phone app** | iOS and Android builds of the same code, where alarms stop being a browser's best effort: the OS holds the schedule, so they ring with the app closed, the screen locked and after a reboot. Your own ringtones, real haptics, pencil pressure and tilt. |
 | **Languages** | English, العربية (full RTL) and Русский — interface *and* voice grammar. |
 
 ---
@@ -84,12 +85,40 @@ The API server also serves the built front-end, so there is one process to
 deploy and the session cookie stays same-origin. Everything lives at
 <http://localhost:4000>.
 
+### The phone app
+
+```bash
+npm run mobile:sync            # build the app bundle and copy it into both platforms
+npm run mobile:android         # open it in Android Studio
+npm run mobile:ios             # open it in Xcode (macOS only)
+```
+
+`mobile:sync` is the only step you need after changing anything in `web/src`.
+The platform projects are committed, so a clone can build the app without
+running any Capacitor scaffolding.
+
+Point the app at your server before building, or it has nowhere to talk to:
+
+```bash
+VITE_API_BASE=https://nexus.example.com npm run mobile:sync
+```
+
+Leaving it unset is fine too — the app asks for a server address on first run
+and remembers it. Your server needs to allow the app's origin, which it does by
+default; see `NATIVE_ORIGINS` under Configuration.
+
+Requirements are the ordinary ones: Android Studio with an SDK of API 35 or
+newer for Android, and Xcode on a Mac for iOS. Building an iOS app anywhere but
+macOS is not possible, which is why only the Android build is verified here.
+
 ### Tests
 
 ```bash
 npm test              # voice parser + shape recognizer
 npm run test:nlp      # 22 utterances across the three languages
 npm run test:recognition
+npm run test:alarms   # the notification schedule handed to the phone's OS
+npm run test:sounds   # every alarm tone is loud, prompt and well-formed
 npm run typecheck
 ```
 
@@ -109,6 +138,14 @@ npm run typecheck
 | `BACKUP_KEEP_MONTHLY` | `12` | Months retained beyond the daily window. |
 | `CORS_ORIGIN` | `http://localhost:5173` | Comma-separated. Same-origin requests are always allowed. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to close registration once your account exists. |
+| `NATIVE_ORIGINS` | *(on)* | The phone app's origins (`capacitor://localhost`, `https://localhost`) are accepted so it can sign in. Set `off` on a server with no phone clients. Plain `http://localhost` is deliberately **not** included — it is shared with every local dev server on the machine. |
+
+Build-time, for the phone app:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `VITE_API_BASE` | *(asked at first run)* | The server the phone app talks to. Baked in when set; otherwise entered in the app and remembered. |
+| `VITE_NATIVE` | `false` | Set by `npm run build:mobile`. Selects the phone bundle: no service worker, absolute API URLs, OS-scheduled alarms. |
 
 ---
 
@@ -196,6 +233,44 @@ Every countdown in the app shares **one** ticker, and each subscriber picks its
 resolution from how far away its deadline is: one second under an hour, one
 minute under two days, five minutes beyond. A hundred rows do not mean a
 hundred timers.
+
+### The phone
+
+The web app rings by running a ticker in an open tab. That is the best a
+browser allows, and it is the whole reason this build exists.
+
+Here the operating system is told, ahead of time, when to make a noise. The
+schedule is reconciled after every poll rather than rewritten — cancelling and
+re-scheduling everything every thirty seconds would leave a repeating window in
+which an alarm about to fire briefly does not exist. Alarms are scheduled as
+*exact*, which on Android needs a permission the user can revoke; when it is
+missing the app says so instead of quietly becoming approximate. They survive a
+reboot, and the activity is allowed to show over the lock screen.
+
+A notification sound plays once, so an escalating alarm queues a short run of
+follow-ups behind the first one and cancels them the moment it is acknowledged.
+That is also why every notification id is derived from the reminder *and* its
+occurrence rather than being random: they have to be findable again to be
+cancelled, and a repeating alarm's Tuesday must not overwrite its Monday.
+
+The tones are the same ones the browser synthesizes. The OS plays a file, from
+disk, while the app is not running — so `npm run sounds` renders each voice
+through the real synth in a headless browser's `OfflineAudioContext` and writes
+the result to `assets/alarm-tones`. Reimplementing them for the phone would
+have meant two definitions of "chime" drifting apart; this way there is still
+one, and the alarm on the phone is the alarm in the browser.
+
+"A sound from inside the phone" finally means what it says. Android hands over
+its own ringtone picker; iOS cannot — apps are not allowed to read the system
+ringtones at all — so there it is a file picker, and the chosen file is *copied*
+into the app's own Sounds directory. Referencing it where the user keeps it
+would give an alarm that breaks when they move the file, and the breakage would
+only surface at the moment it was meant to ring.
+
+When the app is open the OS is still the thing making the sound, and the app
+only raises the screen to act on it. Playing the tone in both places gave two
+copies a fraction of a second apart, which sounds broken and is louder than
+either was meant to be.
 
 ### Reasoning
 
@@ -300,6 +375,15 @@ web/
       clock.ts             one ticker for every countdown in the app
       countdown.ts         countdown formatting and urgency
       audio/               synthesized tones, playback
+      native/              the line between the web app and the phone
+        bridge.ts          which platform this is; loads plugins on demand
+        alarms.ts          hands the schedule to the OS
+        alarmIds.ts        stable notification ids (pure, and tested)
+        sounds.ts          tone files and Android notification channels
+        deviceSounds.ts    the phone's own ringtones and files
+        listeners.ts       Snooze/Done pressed outside the app
+        shell.ts           haptics, safe areas, status bar, splash
+        endpoint.ts        which server the phone app talks to
     store/                 auth, data, ui, alarms, voice, focusSession
     three/                 galaxy scene, nebula shader
     views/                 today, galaxy, list, focus, timeline,
@@ -309,11 +393,18 @@ web/
       api.ts               picks the backend at build time
       serverApi.ts         talks to the Node server
       demo/                the whole backend, in the browser (Pages build)
+assets/alarm-tones/        the twelve tones, rendered once, copied per platform
+web/android/               Android project — manifest, ringtone plugin, icons
+web/ios/                   iOS project — Info.plist, sound-import plugin, icons
 scripts/
   nlp-check.ts             22 utterances, 3 languages
   recognition-check.ts     12 shapes with simulated hand jitter
   handwriting-check.ts     10 handwritten phrases, 90% character-accuracy floor
-  make-icons.mjs           PWA icons, generated (no image dependency)
+  native-alarm-check.ts    the OS notification plan: ids, coverage, collisions
+  render-alarm-sounds.mjs  renders the synth to WAV for the phone builds
+  install-alarm-sounds.mjs copies the tones into each platform project
+  check-alarm-sounds.mjs   every tone is loud, prompt and well-formed
+  make-icons.mjs           PWA, launcher and notification icons, generated
 .github/workflows/
   pages.yml                typecheck, test, build the demo, deploy to Pages
 ```
@@ -334,8 +425,12 @@ scripts/
 
 ## Known limits
 
-- **Background ringing.** Browsers will not run timers reliably in a closed
-  tab. Installing to the home screen helps; a native build is the real fix.
+- **Background ringing on the web.** Browsers will not run timers reliably in
+  a closed tab. Installing to the home screen helps; the phone build is the
+  real fix, and there the OS owns the schedule.
+- **iOS is built but not verified.** The Swift plugin and the project are
+  here, but an iOS build needs Xcode on macOS, so only the Android app has
+  actually been compiled and inspected.
 - **Speech recognition** needs Chrome, Edge or Safari, and most
   implementations send audio to the vendor's servers.
 - **Handwriting** reads separated print, not joined cursive. The transcription
@@ -349,6 +444,8 @@ scripts/
 
 ## Next
 
-The natural next step is packaging with Capacitor for iOS and Android, where
-the alarm limitation disappears: real background alarms, the system ringtone
-picker, and pencil input with full pressure and tilt.
+The phone builds exist, so the remaining work is the things a device makes
+possible rather than a browser: syncing in the background so the app is current
+before you open it, a home-screen widget showing the next alarm and the day's
+countdown, and offline-first storage with real conflict resolution instead of
+last-write-wins.
