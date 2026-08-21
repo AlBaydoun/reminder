@@ -1,5 +1,13 @@
 import type { DueReminder } from '../types';
-import { ESCALATION_STEPS, escalationId, idsForOccurrence, leadId, mainId } from './alarmIds';
+import {
+  ESCALATION_STEPS,
+  escalationId,
+  existingId,
+  flushIds,
+  leadId,
+  mainId,
+  pruneIds,
+} from './alarmIds';
 import { isAndroid, isNative, loadLocalNotifications } from './bridge';
 import { channelIdFor, ensureChannel, nativeSoundFor } from './sounds';
 
@@ -159,6 +167,12 @@ export async function syncNativeAlarms(
     await LocalNotifications.schedule({ notifications });
   }
 
+  // The registry only needs the alarms still ahead of us. Both of these write
+  // it out, so the ids are on disk before the app can be killed — losing them
+  // would mean losing the ability to cancel the alarms just scheduled.
+  pruneIds(now);
+  flushIds();
+
   return { scheduled: toSchedule.length, cancelled: stale.length };
 }
 
@@ -208,7 +222,20 @@ export async function cancelNativeAlarm(reminder: DueReminder, occurrence?: stri
   if (!LocalNotifications) return;
   const at = occurrence ?? reminder.nextFireAt;
   if (!at) return;
-  const ids = idsForOccurrence(reminder, at).map((id) => ({ id }));
+
+  // Only ids that were actually handed out. Asking the registry to *allocate*
+  // here would mint fresh numbers and cancel nothing, leaving the real alarm
+  // to go off after it had been dismissed.
+  const slots = [
+    'main' as const,
+    ...reminder.leadMinutes.map((lead) => `lead${lead}` as const),
+    ...ESCALATION_STEPS.map((step) => `esc${step}` as const),
+  ];
+  const ids = slots
+    .map((slot) => existingId(reminder.id, at, slot))
+    .filter((id): id is number => id !== undefined)
+    .map((id) => ({ id }));
+  if (!ids.length) return;
   await LocalNotifications.cancel({ notifications: ids });
   // A delivered notification is not "pending", so it needs removing too.
   try {
