@@ -6,6 +6,7 @@ import { AppShell } from './components/AppShell';
 import { AuthScreen } from './components/AuthScreen';
 import { CommandPalette } from './components/CommandPalette';
 import { DemoBanner } from './components/DemoBanner';
+import { FocusOverlay } from './components/FocusOverlay';
 import { ItemDetail } from './components/ItemDetail';
 import { Toasts } from './components/Toasts';
 import { VoicePanel } from './components/VoicePanel';
@@ -117,6 +118,7 @@ export default function App() {
       {status === 'signed-out' && <AuthScreen />}
       {status === 'signed-in' && <SignedInApp />}
 
+      {status === 'signed-in' && <FocusOverlay />}
       <AlarmOverlay />
       <DemoBanner />
       <Toasts />

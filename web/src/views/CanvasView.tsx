@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DrawCanvas, type DrawCanvasHandle, type PaperStyle } from '../components/DrawCanvas';
+import { ColorPicker } from '../components/ColorPicker';
 import { FontPicker } from '../components/FontPicker';
 import { Modal, Spinner, Toggle } from '../components/ui';
 import { api } from '../lib/api';
@@ -30,8 +31,41 @@ import { useAuth } from '../store/auth';
 import { useData } from '../store/data';
 import { useTranslation, useUi } from '../store/ui';
 
-const PALETTE = ['#7ce7ff', '#a68bff', '#ff7ce0', '#3ddc97', '#ffc46b', '#ff6b8a', '#eef1ff', '#0b1020'];
 const PAPERS: PaperStyle[] = ['plain', 'lines', 'grid', 'dots'];
+const BRUSH_COLORS_KEY = 'nexus.brushColors';
+
+/**
+ * Each brush starts in the colour it would really be. More importantly each
+ * one *remembers* its colour, so reaching for the highlighter does not mean
+ * re-picking yellow every time, and going back to the pen does not mean
+ * writing the next word in highlighter ink.
+ */
+const DEFAULT_BRUSH_COLORS: Record<BrushId, string> = {
+  fineliner: '#eef1ff',
+  ballpoint: '#7ce7ff',
+  fountain: '#a68bff',
+  calligraphy: '#eef1ff',
+  brush: '#ff7ce0',
+  marker: '#4cc2ff',
+  pencil: '#9aa3c7',
+  charcoal: '#eef1ff',
+  crayon: '#ffc46b',
+  highlighter: '#ffe066',
+  airbrush: '#3ddc97',
+  neon: '#7ce7ff',
+  dashed: '#9aa3c7',
+  ribbon: '#a68bff',
+  eraser: '#000000',
+};
+
+function loadBrushColors(): Record<BrushId, string> {
+  try {
+    const stored = JSON.parse(localStorage.getItem(BRUSH_COLORS_KEY) ?? '{}');
+    return { ...DEFAULT_BRUSH_COLORS, ...(stored as Record<BrushId, string>) };
+  } catch {
+    return { ...DEFAULT_BRUSH_COLORS };
+  }
+}
 const FAMILY_ORDER = ['ink', 'paint', 'dry', 'effect', 'tool'] as const;
 
 /**
@@ -55,8 +89,19 @@ export function CanvasView() {
 
   const canvas = useRef<DrawCanvasHandle>(null);
   const [brush, setBrush] = useState<BrushId>('fineliner');
-  const [color, setColor] = useState(PALETTE[0]);
+  const [brushColors, setBrushColors] = useState<Record<BrushId, string>>(loadBrushColors);
   const [size, setSize] = useState(3);
+
+  const color = brushColors[brush] ?? DEFAULT_BRUSH_COLORS[brush];
+  const setColor = (next: string) => {
+    const updated = { ...brushColors, [brush]: next };
+    setBrushColors(updated);
+    try {
+      localStorage.setItem(BRUSH_COLORS_KEY, JSON.stringify(updated));
+    } catch {
+      /* private mode — the colour still applies for this session */
+    }
+  };
   const [paper, setPaper] = useState<PaperStyle>('lines');
   const [counts, setCounts] = useState({ strokes: 0, texts: 0 });
 
@@ -74,6 +119,7 @@ export function CanvasView() {
   const [font, setFont] = useState<string>((settings?.canvasFont as string) ?? DEFAULT_CANVAS_FONT);
   const [fontSize, setFontSize] = useState(34);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [textColor, setTextColor] = useState('#eef1ff');
 
   useEffect(() => {
     void refreshDrawings();
@@ -241,7 +287,7 @@ export function CanvasView() {
       text: draftText,
       font,
       size: fontSize,
-      color,
+      color: textColor,
       weight: 400,
     };
     canvas.current?.addText(text);
@@ -293,17 +339,13 @@ export function CanvasView() {
         </div>
 
         <div className="canvas-toolbar__row">
-          <div className="canvas-toolbar__group">
-            {PALETTE.map((swatch) => (
-              <button
-                key={swatch}
-                className={`swatch ${color === swatch ? 'is-active' : ''}`}
-                style={{ background: swatch }}
-                onClick={() => setColor(swatch)}
-                aria-label={swatch}
-              />
-            ))}
-          </div>
+          <ColorPicker
+            value={color}
+            onChange={setColor}
+            // Highlighter ink has to be light enough to read through.
+            palette={brush === 'highlighter' ? 'highlight' : 'ink'}
+            compact
+          />
 
           <label className="canvas-toolbar__size">
             <span className="faint">{textMode ? dict.canvas.text.size : dict.canvas.pressure}</span>
@@ -517,9 +559,10 @@ export function CanvasView() {
           autoFocus
           value={draftText}
           placeholder={dict.canvas.text.placeholder}
-          style={{ fontFamily: fontById(font)?.stack, fontSize: Math.min(32, fontSize) }}
+          style={{ fontFamily: fontById(font)?.stack, fontSize: Math.min(32, fontSize), color: textColor }}
           onChange={(event) => setDraftText(event.target.value)}
         />
+        <ColorPicker value={textColor} onChange={setTextColor} />
         <FontPicker value={font} onChange={setFont} filterByLocale={false} />
       </Modal>
 

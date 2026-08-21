@@ -24,7 +24,12 @@ import { useUi } from './ui';
 
 const POLL_MS = 30_000;
 const TICK_MS = 1000;
-const LOOKAHEAD_HOURS = 24;
+/**
+ * How far ahead alarms are pre-armed. It has to exceed the longest pre-alert
+ * the UI offers (one day), or a "warn me a day before" would never get the
+ * chance to fire.
+ */
+const LOOKAHEAD_HOURS = 48;
 
 export interface RingingAlarm {
   reminder: DueReminder;
@@ -70,29 +75,60 @@ function clearAudio(reminderId: string) {
   vibrateTimers.delete(reminderId);
 }
 
-function showNotification(reminder: DueReminder, body: string) {
+/**
+ * Show an alarm as a system notification, with the two buttons a person
+ * actually wants at that moment. Action buttons only exist on service-worker
+ * notifications, which is another reason to prefer them over the constructor —
+ * they also survive the tab being closed.
+ */
+function showNotification(reminder: DueReminder, body: string, withActions = true) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const t = useUi.getState().t;
+
   try {
-    const options: NotificationOptions & { renotify?: boolean; vibrate?: number[] } = {
+    const options: NotificationOptions & {
+      renotify?: boolean;
+      vibrate?: number[];
+      actions?: Array<{ action: string; title: string }>;
+    } = {
       body,
       tag: `nexus-${reminder.id}`,
       renotify: true,
+      // An escalating alarm must stay on screen until it is dealt with.
       requireInteraction: reminder.escalate,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: `${import.meta.env.BASE_URL}icon-192.png`,
+      badge: `${import.meta.env.BASE_URL}icon-192.png`,
+      vibrate: reminder.vibrate ? [400, 200, 400] : undefined,
       data: { reminderId: reminder.id, itemId: reminder.itemId },
+      ...(withActions
+        ? {
+            actions: [
+              { action: 'snooze', title: t('reminder.snoozeFor', { n: reminder.snoozeMinutes }) },
+              { action: 'done', title: t('reminder.markDone') },
+            ],
+          }
+        : {}),
     };
-    // Prefer the service worker: its notifications survive the tab closing.
+
     void navigator.serviceWorker?.ready
-      .then((registration) =>
-        registration.showNotification(reminder.item.title || reminder.label, options),
-      )
+      .then((registration) => registration.showNotification(reminder.item.title || reminder.label, options))
       .catch(() => {
-        new Notification(reminder.item.title || reminder.label, options);
+        // No service worker (or it failed): a plain notification still gets
+        // attention, it just cannot carry buttons.
+        const { actions, ...plain } = options;
+        new Notification(reminder.item.title || reminder.label, plain);
       });
   } catch {
     /* notifications are a bonus, never a requirement */
   }
+}
+
+/** Close any system notification still showing for a reminder. */
+function clearNotification(reminderId: string) {
+  void navigator.serviceWorker?.ready
+    .then((registration) => registration.getNotifications({ tag: `nexus-${reminderId}` }))
+    .then((list) => list?.forEach((n) => n.close()))
+    .catch(() => undefined);
 }
 
 export const useAlarms = create<AlarmState>((set, get) => ({
@@ -115,6 +151,20 @@ export const useAlarms = create<AlarmState>((set, get) => ({
     // the ticker may have been throttled to a crawl while hidden.
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('online', onVisibility);
+    navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage);
+
+    // A notification button pressed while the app was closed opens it with the
+    // action in the URL; carry it out now and tidy the address bar.
+    const params = new URLSearchParams(window.location.search);
+    const pending = params.get('alarmAction');
+    const reminderId = params.get('reminder');
+    if (pending && reminderId) {
+      void runAlarmAction(pending, reminderId);
+      params.delete('alarmAction');
+      params.delete('reminder');
+      const query = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+    }
   },
 
   stop() {
@@ -122,6 +172,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
     if (tickTimer !== undefined) window.clearInterval(tickTimer);
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('online', onVisibility);
+    navigator.serviceWorker?.removeEventListener('message', onServiceWorkerMessage);
     get().stopAllSound();
     set({ running: false, armed: [], ringing: [] });
   },
@@ -166,6 +217,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
 
   async snooze(reminderId, minutes) {
     clearAudio(reminderId);
+    clearNotification(reminderId);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
     try {
       const { snoozedUntil } = await api.snoozeReminder(reminderId, minutes);
@@ -182,6 +234,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
 
   async dismiss(reminderId) {
     clearAudio(reminderId);
+    clearNotification(reminderId);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
     try {
       await api.dismissReminder(reminderId);
@@ -194,6 +247,7 @@ export const useAlarms = create<AlarmState>((set, get) => ({
   async completeFromAlarm(reminderId) {
     const entry = get().ringing.find((r) => r.reminder.id === reminderId);
     clearAudio(reminderId);
+    clearNotification(reminderId);
     set((state) => ({ ringing: state.ringing.filter((r) => r.reminder.id !== reminderId) }));
     if (entry) {
       await useData.getState().toggleComplete(entry.reminder.itemId, true);
@@ -219,6 +273,30 @@ function onVisibility() {
   if (document.visibilityState === 'visible') void useAlarms.getState().sync();
 }
 
+/** Carry out a button pressed on a system notification. */
+async function runAlarmAction(action: string, reminderId: string) {
+  const alarms = useAlarms.getState();
+  if (action === 'snooze') await alarms.snooze(reminderId);
+  else if (action === 'done') await alarms.completeFromAlarm(reminderId);
+  else await alarms.dismiss(reminderId);
+}
+
+function onServiceWorkerMessage(event: MessageEvent) {
+  const data = event.data as { type?: string; action?: string; reminderId?: string } | undefined;
+  if (!data?.reminderId) return;
+
+  if (data.type === 'alarm-action') {
+    void runAlarmAction(data.action ?? 'open', data.reminderId);
+  } else if (data.type === 'alarm-notification-closed') {
+    // Swiping the notification away is an acknowledgement; stop the sound but
+    // leave the reminder itself alone so a repeat still comes round again.
+    clearAudio(data.reminderId);
+    useAlarms.setState((state) => ({
+      ringing: state.ringing.filter((r) => r.reminder.id !== data.reminderId),
+    }));
+  }
+}
+
 type SetState = (partial: Partial<AlarmState> | ((s: AlarmState) => Partial<AlarmState>)) => void;
 type GetState = () => AlarmState;
 
@@ -238,7 +316,7 @@ function tick(set: SetState, get: GetState) {
         set((s) => ({ leadAlertsSent: [...s.leadAlertsSent.slice(-50), leadKey] }));
         const ui = useUi.getState();
         ui.toast(`${reminder.item.icon || '⏰'} ${reminder.item.title} — ${ui.t('common.minutes', { n: lead })}`, 'info');
-        showNotification(reminder, ui.t('common.minutes', { n: lead }));
+        showNotification(reminder, ui.t('common.minutes', { n: lead }), false);
       }
     }
 

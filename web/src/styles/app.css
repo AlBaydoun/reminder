@@ -1936,3 +1936,315 @@
 .item-row__handwritten {
   color: var(--accent-2);
 }
+
+/* ── Countdown ──────────────────────────────────────────────────────────── */
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--stroke);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+.countdown__icon {
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+.countdown__clock {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  /* Fixed width stops the row twitching as the digits change. */
+  min-width: 3.4em;
+  text-align: end;
+}
+.countdown--tiny {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.countdown--tiny .countdown__clock {
+  min-width: 3em;
+}
+.countdown--large {
+  padding: 7px 14px;
+  font-size: 14px;
+  align-self: flex-start;
+}
+.countdown--large .countdown__clock {
+  font-size: 16px;
+}
+
+/* Urgency is carried by colour so a glance is enough. */
+.countdown.is-distant {
+  color: var(--text-faint);
+}
+.countdown.is-upcoming {
+  color: var(--text-dim);
+}
+.countdown.is-today {
+  color: var(--accent);
+  border-color: rgba(124, 231, 255, 0.32);
+  background: rgba(124, 231, 255, 0.1);
+}
+.countdown.is-soon {
+  color: var(--warn);
+  border-color: rgba(255, 196, 107, 0.38);
+  background: rgba(255, 196, 107, 0.12);
+}
+.countdown.is-imminent {
+  color: var(--urgent);
+  border-color: rgba(255, 77, 109, 0.45);
+  background: rgba(255, 77, 109, 0.14);
+}
+.countdown.is-imminent .countdown__clock {
+  animation: countdown-pulse 1.6s ease-in-out infinite;
+}
+.countdown.is-overdue {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--urgent), var(--accent-3));
+  box-shadow: 0 2px 14px rgba(255, 77, 109, 0.35);
+}
+.countdown.is-done {
+  opacity: 0.45;
+  background: transparent;
+  border-color: transparent;
+}
+@keyframes countdown-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.mono.is-overdue {
+  color: var(--urgent);
+}
+.mono.is-imminent {
+  color: var(--urgent);
+}
+.mono.is-soon {
+  color: var(--warn);
+}
+.alarm-card__when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Colour picker ──────────────────────────────────────────────────────── */
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.color-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.color-picker__label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-inline-end: 2px;
+}
+.color-picker__recents {
+  padding-top: 6px;
+  border-top: 1px solid var(--stroke);
+}
+.swatch {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  display: grid;
+  place-items: center;
+  color: #04050d;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  transition: transform 0.16s var(--ease-spring), border-color 0.16s;
+}
+.swatch:hover {
+  transform: scale(1.15);
+}
+.swatch.is-active {
+  border-color: var(--text);
+  transform: scale(1.16);
+}
+.swatch__tick {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+  mix-blend-mode: difference;
+  color: #fff;
+}
+.swatch--custom {
+  background: conic-gradient(#ff6b8a, #ffc46b, #3ddc97, #7ce7ff, #a68bff, #ff7ce0, #ff6b8a);
+  color: #04050d;
+}
+
+/* ── Next alarm, in the header ──────────────────────────────────────────── */
+.next-alarm {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 320px;
+  color: var(--text-dim);
+  transition: color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.next-alarm__icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.next-alarm__title {
+  min-width: 0;
+}
+.next-alarm__clock {
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.next-alarm.is-soon {
+  color: var(--warn);
+  border-color: rgba(255, 196, 107, 0.35);
+}
+.next-alarm.is-imminent,
+.next-alarm.is-overdue {
+  color: var(--urgent);
+  border-color: rgba(255, 77, 109, 0.45);
+  box-shadow: 0 0 22px rgba(255, 77, 109, 0.22);
+}
+
+/* ── Alarm health ───────────────────────────────────────────────────────── */
+.health.is-ready .panel__head {
+  color: var(--ok);
+}
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--stroke);
+  font-size: 13.5px;
+}
+.health-row:last-of-type {
+  border-bottom: none;
+}
+.health-row__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.health-row.is-ok .health-row__icon {
+  color: var(--ok);
+}
+.health-row.is-warn .health-row__icon {
+  color: var(--warn);
+}
+.health-row__tick {
+  color: var(--ok);
+  flex-shrink: 0;
+}
+.health__caveat {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+}
+
+/* ── Focus session ──────────────────────────────────────────────────────── */
+.focus-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 92;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: radial-gradient(120% 100% at 50% 0%, rgba(11, 14, 34, 0.96), rgba(3, 4, 12, 0.99));
+  backdrop-filter: blur(14px);
+}
+.focus-overlay__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  max-width: 560px;
+  width: 100%;
+}
+.focus-overlay__close {
+  position: absolute;
+  top: -8px;
+  inset-inline-end: -8px;
+}
+.focus-overlay__label {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+}
+.focus-overlay__title {
+  margin: 4px 0 20px;
+  font-size: clamp(22px, 4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.focus-overlay__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  max-width: 100%;
+}
+.focus-overlay__ring svg {
+  max-width: 100%;
+  height: auto;
+}
+.focus-overlay__clock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.focus-overlay__time {
+  font-size: clamp(44px, 9vw, 68px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.focus-overlay__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 26px;
+}
+.focus-overlay__hint {
+  margin: 16px 0 0;
+  max-width: 380px;
+  font-size: 12.5px;
+}
+@media (max-width: 900px) {
+  .next-alarm {
+    display: none;
+  }
+}

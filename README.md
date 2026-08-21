@@ -22,10 +22,13 @@ date, a repeat rule, notes and sketches.
 | | |
 |---|---|
 | **Voice control** | Speak one sentence containing several commands. "add oil change under cars corolla and remind me tomorrow at eight and add cleaning" becomes three operations, applied atomically, with one-tap undo. English, Arabic and Russian. |
-| **Alarms** | Multiple simultaneous alarms, twelve synthesized tones, your own uploaded sounds (on a phone the picker opens your music and ringtones), snooze, escalating ring, pre-alerts, and repeats down to "every other day at half past six". |
+| **Alarms** | Multiple simultaneous alarms, twelve synthesized tones, your own uploaded sounds (on a phone the picker opens your music and ringtones), snooze, escalating ring, pre-alerts, and repeats down to "every other day at half past six". Notifications carry **Snooze** and **Done** buttons that work from the lock screen without opening the app. |
+| **Countdowns** | Every unfinished task with a deadline wears a live clock and its date. It counts seconds under an hour, minutes under two days, and once the time passes it counts *up* — an overdue task should get louder, not disappear. |
+| **Focus sessions** | One task, full screen, counting down, with everything else gone. Pause, add five minutes, or mark it done. Time comes from the wall clock, so a locked phone, a backgrounded tab or a reload does not lose the session. |
+| **Colour** | Twelve inks, eight highlighter colours and a free colour picker. Every brush remembers its own colour, so switching from highlighter to pen does not switch to yellow ink. |
 | **Reasoning** | A ranked focus queue that explains *why* each item is where it is, workload forecasting against your daily capacity, dependency-cycle detection, near-duplicate detection, and auto-categorisation learned from your own tree. |
 | **Handwriting** | Write a task by hand and it stays handwritten — the ink is the row. The transcription becomes the title, so it is searchable, completable, schedulable and voice-addressable like any typed entry. Read by the browser's own engine where one exists, and by a built-in reader everywhere else. |
-| **Brushes & fonts** | Fifteen brushes — fineliner, ballpoint, fountain, calligraphy, brush pen, marker, pencil, charcoal, crayon, highlighter, airbrush, neon, dashed, ribbon, eraser — driven by pressure, tilt and speed. Forty-one typefaces for the canvas text tool and the interface. Draw a checkmark to complete a task, a star to pin it, a strike to delete it. |
+| **Brushes & fonts** | Fifteen brushes — fineliner, ballpoint, fountain, calligraphy, brush pen, marker, pencil, charcoal, crayon, highlighter, airbrush, neon, dashed, ribbon, eraser — driven by pressure, tilt and speed, each in any colour you choose. Forty-one typefaces for the canvas text tool and the interface. Draw a checkmark to complete a task, a star to pin it, a strike to delete it. |
 | **3D Galaxy** | Categories as living worlds. Size tracks how much is inside, a ring shows completion, overdue worlds pulse, and tasks orbit as moons. |
 | **Backups** | A full copy of every account is written every night, plus a byte-exact database snapshot. Rotation, restore-with-safety-copy, manual export and import. |
 | **Languages** | English, العربية (full RTL) and Русский — interface *and* voice grammar. |
@@ -155,10 +158,36 @@ download, no licensing, and they stay clean at any volume. FM synthesis for
 bells and chimes, filtered noise for water and birdsong, swept oscillators for
 sirens and radar.
 
+Notifications carry **Snooze** and **Done** buttons. The service worker handles
+the tap itself: with the app open it messages the tab, and with the app closed
+it reopens it with the action in the URL, so pressing *Done* on a lock screen
+completes the task either way. Dismissing a notification stops the ring.
+
+The next alarm is pinned to the header wherever you are in the app, counting
+down, and a **health panel** on the alarms screen lists every reason an alarm
+might not reach you — notification permission, whether sound has been unlocked
+yet, whether the app is installed — each with the button that fixes it.
+
 **A web app cannot ring reliably with its tab closed.** Nexus says so in the
 interface rather than pretending otherwise: it asks for notification
 permission, primes the audio context on your first interaction, and recommends
 installing to the home screen. This is the main thing a native build will fix.
+
+### Focus
+
+The point of the app is attention, and a list is a menu of everything you are
+*not* doing. A focus session removes the menu: one task, a 300-pixel ring, and
+the time left. The session length defaults to the task's own effort estimate.
+
+Elapsed time is derived from two numbers — the banked total and the wall-clock
+instant the current run began — rather than accumulated by a ticker. A ticker
+stops when the tab is backgrounded or the phone locks and the timer silently
+runs slow; this cannot. It is also what makes the session survive a reload.
+
+Every countdown in the app shares **one** ticker, and each subscriber picks its
+resolution from how far away its deadline is: one second under an hour, one
+minute under two days, five minutes beyond. A hundred rows do not mean a
+hundred timers.
 
 ### Reasoning
 
@@ -260,8 +289,10 @@ web/
       brushes.ts           the fifteen brushes
       fonts.ts             the typeface library
       inkWriter.ts         writes text as strokes; renders ink to an image
+      clock.ts             one ticker for every countdown in the app
+      countdown.ts         countdown formatting and urgency
       audio/               synthesized tones, playback
-    store/                 auth, data, ui, alarms, voice
+    store/                 auth, data, ui, alarms, voice, focusSession
     three/                 galaxy scene, nebula shader
     views/                 today, galaxy, list, focus, timeline,
                            alarms, draw, insights, settings, trash
@@ -287,7 +318,8 @@ scripts/
 |---|---|
 | `⌘K` / `Ctrl+K` | Search everything |
 | `⌘J` / `Ctrl+J` | Voice |
-| `Esc` | Close |
+| `Esc` | Close — including ending a focus session |
+| `Space` | Pause or resume a focus session |
 | `↑ ↓ ⏎` | Move and choose in search |
 
 ---

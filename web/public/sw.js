@@ -11,7 +11,7 @@
  * than showing an honest "no connection".
  */
 
-const VERSION = 'nexus-v2';
+const VERSION = 'nexus-v3';
 
 // Paths are derived from the worker's own scope so the same file works both at
 // the site root and under a project sub-path like /reminder/ on GitHub Pages.
@@ -73,19 +73,46 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+/**
+ * Acting on an alarm without opening the app.
+ *
+ * The buttons on the notification are the whole point: at 7am you want to press
+ * "Snooze" on the notification itself, not hunt for a tab. If the app is open
+ * the action is handed straight to it; if it is not, the app is opened with the
+ * action in the URL and carries it out on load — so Snooze always snoozes,
+ * whether or not anything was running.
+ */
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const itemId = event.notification.data?.itemId;
+  const { reminderId, itemId } = event.notification.data ?? {};
+  const action = event.action || 'open';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
-          client.postMessage({ type: 'alarm-notification-click', itemId });
+          client.postMessage({ type: 'alarm-action', action, reminderId, itemId });
           return client.focus();
         }
       }
-      return self.clients.openWindow(BASE);
+      const query = reminderId
+        ? `?alarmAction=${encodeURIComponent(action)}&reminder=${encodeURIComponent(reminderId)}`
+        : '';
+      return self.clients.openWindow(`${BASE}${query}`);
+    }),
+  );
+});
+
+// Swiping a notification away is still an acknowledgement, so an escalating
+// alarm should stop shouting rather than ring on into an empty room.
+self.addEventListener('notificationclose', (event) => {
+  const { reminderId } = event.notification.data ?? {};
+  if (!reminderId) return;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        client.postMessage({ type: 'alarm-notification-closed', reminderId });
+      }
     }),
   );
 });

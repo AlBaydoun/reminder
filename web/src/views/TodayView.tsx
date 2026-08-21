@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { AlarmClock, CalendarClock, Flame, Sparkles, Sun, Zap } from 'lucide-react';
 import { useMemo } from 'react';
 import { QuickAdd } from '../components/QuickAdd';
+import { Countdown } from '../components/Countdown';
 import { EmptyState, ProgressRing } from '../components/ui';
 import { formatWhen, isOverdue } from '../lib/format';
 import { colorFromString } from '../lib/text';
@@ -108,7 +109,7 @@ export function TodayView() {
           {item.title}
           {path.length > 0 && <span className="faint task-line__path"> · {path.map((p) => p.title).join(' › ')}</span>}
         </span>
-        {when && <span className="chip">{formatWhen(when, locale, dict)}</span>}
+        {when && <Countdown dueAt={when} />}
       </div>
     );
   };
@@ -193,7 +194,7 @@ export function TodayView() {
               <div key={reminder.id} className="task-line" onClick={() => openDetail(reminder.itemId)}>
                 <span className="task-line__icon">⏰</span>
                 <span className="grow truncate">{reminder.label || titleFor(reminder.itemId)}</span>
-                <span className="chip">{formatWhen(reminder.nextFireAt, locale, dict)}</span>
+                <Countdown dueAt={reminder.nextFireAt} icon="alarm" />
               </div>
             ))}
           </Section>

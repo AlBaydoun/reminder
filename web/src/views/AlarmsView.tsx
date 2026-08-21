@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { AlarmClock, BellOff, BellRing, Plus, Trash2, Volume2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { AlarmHealth } from '../components/AlarmHealth';
+import { Countdown } from '../components/Countdown';
 import { SoundPicker } from '../components/SoundPicker';
 import { EmptyState, Modal, Toggle } from '../components/ui';
 import { unlockAudio } from '../lib/audio/player';
@@ -65,24 +67,7 @@ export function AlarmsView() {
         </button>
       </header>
 
-      {!notificationsGranted && (
-        <motion.div className="notice glass" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <BellRing size={18} />
-          <div className="grow">
-            <strong>{dict.reminder.permissionTitle}</strong>
-            <p className="muted">{dict.reminder.permissionBody}</p>
-          </div>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={async () => {
-              await unlockAudio();
-              await requestNotifications();
-            }}
-          >
-            {dict.reminder.permissionAllow}
-          </button>
-        </motion.div>
-      )}
+      <AlarmHealth />
 
       {sorted.length === 0 ? (
         <EmptyState icon={<BellOff size={34} />} title={dict.reminder.noAlarms} />
@@ -100,11 +85,13 @@ export function AlarmsView() {
               <span className="alarm-card__icon">{iconFor(reminder.itemId)}</span>
               <div className="grow" onClick={() => openDetail(reminder.itemId)}>
                 <h3 className="truncate">{reminder.label || titleFor(reminder.itemId)}</h3>
-                <p className="muted">
-                  {reminder.nextFireAt
-                    ? dict.reminder.nextAt.replace('{when}', formatWhen(reminder.nextFireAt, locale, dict))
-                    : dict.reminder.missed}
-                  {reminder.rrule && ` · ${describeRecurrence(reminder.rrule, dict, locale)}`}
+                <p className="muted alarm-card__when">
+                  {reminder.nextFireAt ? (
+                    <Countdown dueAt={reminder.nextFireAt} icon="alarm" />
+                  ) : (
+                    dict.reminder.missed
+                  )}
+                  {reminder.rrule && <span> · {describeRecurrence(reminder.rrule, dict, locale)}</span>}
                 </p>
               </div>
               <div className="alarm-card__actions">

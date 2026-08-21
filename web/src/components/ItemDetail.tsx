@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import type { Item } from '../lib/types';
 import { itemPath, useData } from '../store/data';
 import { useTranslation, useUi } from '../store/ui';
+import { Countdown } from './Countdown';
 import { Drawer, Toggle } from './ui';
 
 /**
@@ -145,6 +146,7 @@ export function ItemDetail() {
                 value={toLocalInputValue(value('dueAt') as string | null)}
                 onChange={(event) => commit({ dueAt: fromLocalInputValue(event.target.value) })}
               />
+              <Countdown dueAt={item.dueAt} done={item.status === 'done'} showDate={false} size="large" />
             </div>
             <div className="field">
               <label htmlFor="detail-effort">{dict.item.effort}</label>
@@ -230,10 +232,12 @@ export function ItemDetail() {
               itemReminders.map((reminder) => (
                 <div key={reminder.id} className="detail__row">
                   <span className="grow truncate">
-                    {reminder.nextFireAt
-                      ? dict.reminder.nextAt.replace('{when}', formatWhen(reminder.nextFireAt, locale, dict))
-                      : dict.reminder.missed}
-                    {reminder.rrule && ` · ${describeRecurrence(reminder.rrule, dict, locale)}`}
+                    {reminder.nextFireAt ? (
+                      <Countdown dueAt={reminder.nextFireAt} icon="alarm" />
+                    ) : (
+                      dict.reminder.missed
+                    )}
+                    {reminder.rrule && <span className="faint"> · {describeRecurrence(reminder.rrule, dict, locale)}</span>}
                   </span>
                   <button
                     className="btn btn-ghost btn-icon btn-sm"

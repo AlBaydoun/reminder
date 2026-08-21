@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
-import { Ban, Pause, Play, Square, Target } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Ban, Play, Target } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Countdown } from '../components/Countdown';
 import { EmptyState, ProgressRing } from '../components/ui';
 import { playCue } from '../lib/audio/player';
 import { formatDuration, formatWhen, PRIORITY_COLORS } from '../lib/format';
 import { itemPath, useData } from '../store/data';
+import { useFocusSession } from '../store/focusSession';
 import { useTranslation, useUi } from '../store/ui';
 
 /**
@@ -19,22 +21,13 @@ export function FocusView() {
   const openDetail = useUi((s) => s.openDetail);
 
   const [showBlocked, setShowBlocked] = useState(false);
-  const [timerFor, setTimerFor] = useState<string | null>(null);
-  const [seconds, setSeconds] = useState(0);
-  const [running, setRunning] = useState(false);
-
-  useEffect(() => {
-    if (!running) return;
-    const timer = window.setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [running]);
+  const startSession = useFocusSession((s) => s.start);
+  const activeItemId = useFocusSession((s) => s.itemId);
 
   const list = useMemo(() => {
     const focus = overview?.focus ?? [];
     return showBlocked ? focus : focus.filter((f) => !f.blocked);
   }, [overview, showBlocked]);
-
-  const clock = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   if (!list.length) {
     return (
@@ -63,7 +56,7 @@ export function FocusView() {
       <div className="focus-list">
         {list.map((scored, index) => {
           const path = itemPath(items, scored.item.id).slice(0, -1);
-          const active = timerFor === scored.item.id;
+          const active = activeItemId === scored.item.id;
           return (
             <motion.article
               key={scored.item.id}
@@ -99,9 +92,7 @@ export function FocusView() {
                       ) ?? reason.code}
                     </span>
                   ))}
-                  {scored.item.dueAt && (
-                    <span className="chip chip--tiny">{formatWhen(scored.item.dueAt, locale, dict)}</span>
-                  )}
+                  {scored.item.dueAt && <Countdown dueAt={scored.item.dueAt} size="tiny" />}
                   {scored.item.effortMinutes > 0 && (
                     <span className="chip chip--tiny">{formatDuration(scored.item.effortMinutes, dict)}</span>
                   )}
@@ -109,48 +100,22 @@ export function FocusView() {
               </div>
 
               <div className="focus-card__actions">
-                {active ? (
-                  <>
-                    <span className="mono focus-card__clock">{clock}</span>
-                    <button className="btn btn-icon btn-sm" onClick={() => setRunning(!running)} aria-label={dict.focus.pause}>
-                      {running ? <Pause size={15} /> : <Play size={15} />}
-                    </button>
-                    <button
-                      className="btn btn-icon btn-sm"
-                      aria-label={dict.focus.stop}
-                      onClick={() => {
-                        setTimerFor(null);
-                        setRunning(false);
-                        setSeconds(0);
-                      }}
-                    >
-                      <Square size={15} />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => {
-                      setTimerFor(scored.item.id);
-                      setSeconds(0);
-                      setRunning(true);
-                      playCue('tick');
-                    }}
-                    disabled={scored.blocked}
-                  >
-                    <Play size={14} />
-                    {dict.focus.startTimer}
-                  </button>
-                )}
+                <button
+                  className={`btn btn-sm ${active ? 'btn-primary' : ''}`}
+                  onClick={() => {
+                    playCue('tick');
+                    // The task's own estimate is the natural session length;
+                    // 25 minutes when there is no estimate to go on.
+                    startSession(scored.item.id, scored.item.effortMinutes || 25);
+                  }}
+                  disabled={scored.blocked}
+                >
+                  <Play size={14} />
+                  {dict.focusSession.start}
+                </button>
                 <button
                   className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    void toggleComplete(scored.item.id, true);
-                    if (active) {
-                      setTimerFor(null);
-                      setRunning(false);
-                    }
-                  }}
+                  onClick={() => void toggleComplete(scored.item.id, true)}
                   disabled={scored.blocked}
                 >
                   {dict.item.complete}

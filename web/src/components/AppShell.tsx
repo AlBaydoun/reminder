@@ -25,6 +25,7 @@ import { useAlarms } from '../store/alarms';
 import { useAuth } from '../store/auth';
 import { useTranslation, useUi } from '../store/ui';
 import { AuroraBackground } from './AuroraBackground';
+import { NextAlarmBar } from './NextAlarmBar';
 
 interface NavEntry {
   to: string;
@@ -141,6 +142,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="grow truncate faint">{dict.common.searchPlaceholder}</span>
             <kbd className="palette__kbd">⌘K</kbd>
           </button>
+
+          <NextAlarmBar />
 
           <button
             className="btn btn-icon"

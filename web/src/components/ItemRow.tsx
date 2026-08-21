@@ -10,11 +10,12 @@ import {
   Repeat,
 } from 'lucide-react';
 import { useState, type MouseEvent } from 'react';
-import { formatWhen, isOverdue, PRIORITY_COLORS } from '../lib/format';
+import { isOverdue, PRIORITY_COLORS } from '../lib/format';
 import { colorFromString } from '../lib/text';
 import type { Reminder } from '../lib/types';
 import type { TreeNode } from '../store/data';
 import { useTranslation, useUi } from '../store/ui';
+import { Countdown } from './Countdown';
 import { Confetti, ProgressRing } from './ui';
 
 export interface ItemRowProps {
@@ -174,11 +175,9 @@ export function ItemRow({
               {reminders.length > 1 && <span className="mono">{reminders.length}</span>}
             </span>
           )}
-          {item.dueAt && (
-            <span className={`chip item-row__due ${overdue ? 'is-overdue' : ''}`}>
-              {formatWhen(item.dueAt, locale, dict)}
-            </span>
-          )}
+          {/* The date says when; the countdown says how long is left. Only the
+              second one changes how the row feels as the day goes on. */}
+          <Countdown dueAt={item.dueAt} done={done} />
           {item.priority !== 2 && (
             <span
               className="item-row__priority"
