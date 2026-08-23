@@ -1,0 +1,3 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-C-KvF3xP.js","assets/index-BRQMjpGH.js","assets/three-DDyQpu33.js","assets/motion--zA-rPix.js"])))=>i.map(i=>d[i]);
+import{_ as e}from"./three-DDyQpu33.js";import{registerPlugin as o}from"./index-BRQMjpGH.js";import"./motion--zA-rPix.js";var i;(function(r){r.Heavy="HEAVY",r.Medium="MEDIUM",r.Light="LIGHT"})(i||(i={}));var t;(function(r){r.Success="SUCCESS",r.Warning="WARNING",r.Error="ERROR"})(t||(t={}));const a=o("Haptics",{web:()=>e(()=>import("./web-C-KvF3xP.js"),__vite__mapDeps([0,1,2,3])).then(r=>new r.HapticsWeb)});export{a as Haptics,i as ImpactStyle,t as NotificationType};
+//# sourceMappingURL=index-cuvntoWW.js.map

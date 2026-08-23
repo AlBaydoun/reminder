@@ -1,0 +1,3 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-DX4WZfmx.js","assets/index-BRQMjpGH.js"])))=>i.map(i=>d[i]);
+import{_ as t}from"./three-DDyQpu33.js";import{registerPlugin as r}from"./index-BRQMjpGH.js";import"./motion--zA-rPix.js";var i;(function(o){o[o.Sunday=1]="Sunday",o[o.Monday=2]="Monday",o[o.Tuesday=3]="Tuesday",o[o.Wednesday=4]="Wednesday",o[o.Thursday=5]="Thursday",o[o.Friday=6]="Friday",o[o.Saturday=7]="Saturday"})(i||(i={}));const u=r("LocalNotifications",{web:()=>t(()=>import("./web-DX4WZfmx.js"),__vite__mapDeps([0,1])).then(o=>new o.LocalNotificationsWeb)});export{u as LocalNotifications,i as Weekday};
+//# sourceMappingURL=index-tp0l5dvn.js.map
