@@ -2,7 +2,7 @@
   "name": "nexus-reminder",
   "private": true,
   "version": "1.0.0",
-  "description": "Nexus — a voice-driven, 3D to-do list and reminder system",
+  "description": "Nexus \u2014 a voice-driven, 3D to-do list and reminder system",
   "workspaces": [
     "server",
     "web"
@@ -11,14 +11,14 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
-    "build": "npm --workspace server run build && npm --workspace web run build",
+    "build": "npm --workspace server run build && npm --workspace web run build && node scripts/inject-sw-assets.mjs",
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
     "test:nlp": "tsx scripts/nlp-check.ts",
-    "test": "npm run test:nlp && npm run test:recognition && npm run test:handwriting && npm run test:alarms",
+    "test": "npm run test:nlp && npm run test:recognition && npm run test:handwriting && npm run test:alarms && npm run test:offline",
     "test:recognition": "tsx scripts/recognition-check.ts",
     "icons": "node scripts/make-icons.mjs",
-    "build:demo": "VITE_DEMO=true VITE_BASE=${VITE_BASE:-/reminder/} npm --workspace web run build && cp web/dist/index.html web/dist/404.html",
+    "build:demo": "VITE_DEMO=true VITE_BASE=${VITE_BASE:-/reminder/} npm --workspace web run build && node scripts/inject-sw-assets.mjs && cp web/dist/index.html web/dist/404.html",
     "preview:demo": "npm run build:demo && npx --yes serve -s web/dist -l 4173",
     "test:handwriting": "tsx scripts/handwriting-check.ts",
     "build:mobile": "node scripts/install-alarm-sounds.mjs && VITE_NATIVE=true VITE_BASE=/ npm --workspace web run build",
@@ -28,7 +28,8 @@
     "mobile:run:android": "npm run mobile:sync && npm --workspace web exec cap run android",
     "test:alarms": "tsx scripts/native-alarm-check.ts",
     "test:sounds": "node scripts/check-alarm-sounds.mjs",
-    "sounds": "node scripts/render-alarm-sounds.mjs"
+    "sounds": "node scripts/render-alarm-sounds.mjs",
+    "test:offline": "tsx scripts/offline-check.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -417,6 +417,14 @@ export const ar: Dictionary = {
     source: 'الكود المصدري',
     dismiss: 'فهمت',
   },
+  connection: {
+    offline: 'دون اتصال — كل شيء يعمل',
+    offlineWithChanges: 'دون اتصال — حُفظ {n} تغيير هنا، جاهز للإرسال',
+    queued: '{n} تغيير بانتظار الإرسال',
+    syncing: 'جارٍ إرسال تغييراتك…',
+    synced: 'كل شيء محفوظ',
+    workingLocally: 'العمل من هذا الجهاز',
+  },
   countdown: {
     day: 'ي',
     hour: 'س',

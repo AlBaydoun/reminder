@@ -420,6 +420,14 @@ export const en = {
     source: 'Source code',
     dismiss: 'Got it',
   },
+  connection: {
+    offline: 'Offline — everything still works',
+    offlineWithChanges: 'Offline — {n} change(s) saved here, ready to send',
+    queued: '{n} change(s) waiting to send',
+    syncing: 'Sending your changes…',
+    synced: 'Everything is saved',
+    workingLocally: 'Working from this device',
+  },
   countdown: {
     day: 'd',
     hour: 'h',

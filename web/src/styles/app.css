@@ -2312,3 +2312,49 @@
   min-width: 44px;
   min-height: 44px;
 }
+
+/* ── Connection bar ─────────────────────────────────────────────────────────
+ *
+ * Shown only when there is something to say: offline, sending, or the moment
+ * the last queued change lands. A permanent "online" badge would be noise.
+ */
+.connection-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
+}
+.connection-bar.is-offline {
+  background: color-mix(in srgb, var(--warn, #ffc46b) 16%, transparent);
+  border-color: color-mix(in srgb, var(--warn, #ffc46b) 40%, transparent);
+  color: var(--warn, #ffc46b);
+}
+.connection-bar.is-syncing {
+  background: color-mix(in srgb, var(--accent, #7ce7ff) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #7ce7ff) 36%, transparent);
+  color: var(--accent, #7ce7ff);
+}
+.connection-bar.is-ok {
+  background: color-mix(in srgb, var(--ok, #3ddc97) 14%, transparent);
+  border-color: color-mix(in srgb, var(--ok, #3ddc97) 34%, transparent);
+  color: var(--ok, #3ddc97);
+}
+.connection-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spin {
+  animation: connection-spin 1.1s linear infinite;
+}
+@keyframes connection-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+}

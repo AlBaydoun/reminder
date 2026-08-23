@@ -9,10 +9,17 @@
  */
 import { api as serverApi, ApiError as ServerApiError, getAccessToken as serverGetToken, onAuthChange as serverOnAuthChange, setAccessToken as serverSetToken } from './serverApi';
 import { api as demoApi, ApiError as DemoApiError, getAccessToken as demoGetToken, onAuthChange as demoOnAuthChange, setAccessToken as demoSetToken } from './demo/api';
+import { offlineCapable } from './offline';
 
 export const IS_DEMO = import.meta.env.VITE_DEMO === 'true';
 
-export const api: typeof serverApi = IS_DEMO ? demoApi : serverApi;
+/**
+ * The server client is wrapped so a lost connection is a degraded mode rather
+ * than a wall: reads fall back to a local mirror, reasoning is computed on the
+ * device, and changes queue until there is a network again. The demo needs
+ * none of it — its backend is already in the browser and never goes away.
+ */
+export const api: typeof serverApi = IS_DEMO ? demoApi : offlineCapable(serverApi);
 export const ApiError = IS_DEMO ? DemoApiError : ServerApiError;
 export const setAccessToken = IS_DEMO ? demoSetToken : serverSetToken;
 export const getAccessToken = IS_DEMO ? demoGetToken : serverGetToken;

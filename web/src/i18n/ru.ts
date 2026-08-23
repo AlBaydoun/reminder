@@ -418,6 +418,14 @@ export const ru: Dictionary = {
     source: 'Исходный код',
     dismiss: 'Понятно',
   },
+  connection: {
+    offline: 'Нет сети — всё продолжает работать',
+    offlineWithChanges: 'Нет сети — {n} изм. сохранено здесь, готово к отправке',
+    queued: '{n} изм. ждёт отправки',
+    syncing: 'Отправляем ваши изменения…',
+    synced: 'Всё сохранено',
+    workingLocally: 'Работа с этого устройства',
+  },
   countdown: {
     day: 'д',
     hour: 'ч',

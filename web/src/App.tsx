@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
+import { onSynced } from './lib/offline';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AlarmOverlay } from './components/AlarmOverlay';
 import { AppShell } from './components/AppShell';
@@ -68,7 +69,13 @@ function SignedInApp() {
     void refresh();
     void refreshSounds();
     startAlarms();
-    return () => stopAlarms();
+    // Changes made offline reach the server on their own; the workspace has to
+    // be reloaded afterwards so the interface stops showing temporary ids.
+    const unsubscribe = onSynced(() => void refresh({ silent: true }));
+    return () => {
+      unsubscribe();
+      stopAlarms();
+    };
   }, [refresh, refreshSounds, startAlarms, stopAlarms]);
 
   // Bring the workspace back in sync after the tab has been in the background.

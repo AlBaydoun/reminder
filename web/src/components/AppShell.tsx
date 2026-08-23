@@ -25,6 +25,7 @@ import { useAlarms } from '../store/alarms';
 import { useAuth } from '../store/auth';
 import { useTranslation, useUi } from '../store/ui';
 import { AuroraBackground } from './AuroraBackground';
+import { ConnectionBar } from './ConnectionBar';
 import { NextAlarmBar } from './NextAlarmBar';
 
 interface NavEntry {
@@ -143,6 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <kbd className="palette__kbd">⌘K</kbd>
           </button>
 
+          <ConnectionBar />
           <NextAlarmBar />
 
           <button

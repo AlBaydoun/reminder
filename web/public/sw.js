@@ -11,19 +11,41 @@
  * than showing an honest "no connection".
  */
 
-const VERSION = 'nexus-v3';
+const VERSION = 'nexus-v5';
 
 // Paths are derived from the worker's own scope so the same file works both at
 // the site root and under a project sub-path like /reminder/ on GitHub Pages.
 const BASE = new URL('./', self.location).pathname;
 const INDEX = `${BASE}index.html`;
-const SHELL = [BASE, INDEX, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`, `${BASE}icon-192.png`, `${BASE}icon-512.png`];
+
+/**
+ * The built asset filenames, written in at build time.
+ *
+ * They have to be precached, and precaching them is not optional. The page's
+ * own scripts are requested before this worker takes control, so they never
+ * pass through the fetch handler on a first visit and would not be in the
+ * cache when the connection later disappears — leaving an installed app that
+ * cannot start. `scripts/inject-sw-assets.mjs` fills this in.
+ */
+const BUILD_ASSETS = self.__NEXUS_ASSETS__ ?? [];
+
+const SHELL = [
+  BASE,
+  INDEX,
+  `${BASE}manifest.webmanifest`,
+  `${BASE}icon.svg`,
+  `${BASE}icon-192.png`,
+  `${BASE}icon-512.png`,
+  ...BUILD_ASSETS.map((file) => `${BASE}${file}`),
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(VERSION)
-      .then((cache) => cache.addAll(SHELL))
+      // Individually, so one missing file cannot fail the whole install and
+      // leave the app with no offline shell at all.
+      .then((cache) => Promise.all(SHELL.map((url) => cache.add(url).catch(() => undefined))))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting()),
   );
@@ -47,17 +69,29 @@ self.addEventListener('fetch', (event) => {
   // Never serve a cached API response — stale tasks are worse than no tasks.
   if (url.pathname.startsWith('/api/')) return;
 
+  /**
+   * Cached lookups ignore Vary, deliberately.
+   *
+   * The API sends `Vary: Origin` on everything, including the built assets.
+   * A precache request made by this worker carries no Origin header, while the
+   * page's own `<script crossorigin>` request does — so by the letter of the
+   * spec they are different cache entries, and a precached bundle would never
+   * be found again. The content does not actually vary by origin: these are
+   * same-origin static files with a content hash in the name.
+   */
+  const MATCH = { ignoreVary: true };
+
   // Navigations: try the network, fall back to the cached shell.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match(INDEX).then((hit) => hit ?? Response.error())),
+      fetch(request).catch(() => caches.match(INDEX, MATCH).then((hit) => hit ?? Response.error())),
     );
     return;
   }
 
   // Static assets: cache first, then fill the cache in the background.
   event.respondWith(
-    caches.match(request).then(
+    caches.match(request, MATCH).then(
       (hit) =>
         hit ??
         fetch(request)
@@ -68,7 +102,11 @@ self.addEventListener('fetch', (event) => {
             }
             return response;
           })
-          .catch(() => caches.match(INDEX).then((fallback) => fallback ?? Response.error())),
+          // A failed asset must fail as an asset. Handing back the app shell
+          // instead answers a script request with HTML, and the browser
+          // rejects it on MIME type — which reads as a broken app rather than
+          // a missing file, and is much harder to diagnose.
+          .catch(() => Response.error()),
     ),
   );
 });
