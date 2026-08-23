@@ -15,7 +15,7 @@
     "start": "npm --workspace server run start",
     "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
     "test:nlp": "tsx scripts/nlp-check.ts",
-    "test": "npm run test:nlp && npm run test:recognition && npm run test:handwriting && npm run test:alarms && npm run test:offline",
+    "test": "npm run test:nlp && npm run test:recognition && npm run test:handwriting && npm run test:alarms && npm run test:offline && npm run test:planner",
     "test:recognition": "tsx scripts/recognition-check.ts",
     "icons": "node scripts/make-icons.mjs",
     "build:demo": "VITE_DEMO=true VITE_BASE=${VITE_BASE:-/reminder/} npm --workspace web run build && node scripts/inject-sw-assets.mjs && cp web/dist/index.html web/dist/404.html",
@@ -29,7 +29,8 @@
     "test:alarms": "tsx scripts/native-alarm-check.ts",
     "test:sounds": "node scripts/check-alarm-sounds.mjs",
     "sounds": "node scripts/render-alarm-sounds.mjs",
-    "test:offline": "tsx scripts/offline-check.ts"
+    "test:offline": "tsx scripts/offline-check.ts",
+    "test:planner": "tsx scripts/planner-check.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -19,6 +19,7 @@ import { useUi } from './store/ui';
 import { AlarmsView } from './views/AlarmsView';
 import { CanvasView } from './views/CanvasView';
 import { FocusView } from './views/FocusView';
+import { PlanView } from './views/PlanView';
 import { GalaxyView } from './views/GalaxyView';
 import { InsightsView } from './views/InsightsView';
 import { ListView } from './views/ListView';
@@ -44,6 +45,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<TodayView />} />
           <Route path="/galaxy" element={<GalaxyView />} />
           <Route path="/list" element={<ListView />} />
+          <Route path="/plan" element={<PlanView />} />
           <Route path="/focus" element={<FocusView />} />
           <Route path="/timeline" element={<TimelineView />} />
           <Route path="/alarms" element={<AlarmsView />} />

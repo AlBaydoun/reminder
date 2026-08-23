@@ -1,22 +1,5 @@
 import { motion } from 'framer-motion';
-import {
-  Activity,
-  AlarmClock,
-  CalendarRange,
-  FolderTree,
-  LogOut,
-  Mic,
-  Moon,
-  Orbit,
-  PenLine,
-  RotateCcw,
-  Search,
-  Settings,
-  Sun,
-  Sunrise,
-  Target,
-  Trash2,
-} from 'lucide-react';
+import { Activity, AlarmClock, CalendarClock, CalendarRange, FolderTree, LogOut, Mic, Moon, Orbit, PenLine, RotateCcw, Search, Settings, Sun, Sunrise, Target, Trash2 } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { api, IS_DEMO } from '../lib/api';
@@ -37,11 +20,12 @@ interface NavEntry {
 }
 
 const NAV_KEYS = {
-  today: 1, galaxy: 1, list: 1, focus: 1, timeline: 1, alarms: 1, canvas: 1, insights: 1,
+  today: 1, plan: 1, galaxy: 1, list: 1, focus: 1, timeline: 1, alarms: 1, canvas: 1, insights: 1,
 } as const;
 
 const NAV: NavEntry[] = [
   { to: '/', icon: Sunrise, key: 'today', end: true },
+  { to: '/plan', icon: CalendarClock, key: 'plan' },
   { to: '/galaxy', icon: Orbit, key: 'galaxy' },
   { to: '/list', icon: FolderTree, key: 'list' },
   { to: '/focus', icon: Target, key: 'focus' },
