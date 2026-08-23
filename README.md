@@ -31,6 +31,9 @@ date, a repeat rule, notes and sketches.
 | **Brushes & fonts** | Fifteen brushes — fineliner, ballpoint, fountain, calligraphy, brush pen, marker, pencil, charcoal, crayon, highlighter, airbrush, neon, dashed, ribbon, eraser — driven by pressure, tilt and speed, each in any colour you choose. Forty-one typefaces for the canvas text tool and the interface. Draw a checkmark to complete a task, a star to pin it, a strike to delete it. |
 | **3D Galaxy** | Categories as living worlds. Size tracks how much is inside, a ring shows completion, overdue worlds pulse, and tasks orbit as moons. |
 | **Backups** | A full copy of every account is written every night, plus a byte-exact database snapshot. Rotation, restore-with-safety-copy, manual export and import. |
+| **Works offline** | Lose the network and the app carries on: your tasks are there, the reasoning is computed on the device, and changes queue up and send themselves when you are back. Made for the train, the basement and the plane. |
+| **Plans your day** | Not a ranked list — a timetable. Alarms are appointments, demanding work gets your sharpest hours (learned from when you actually finish things), and whatever will not fit is named rather than discovered at midnight. |
+| **Home-screen widget** | The next alarm, counting down, on your Android home screen — so there is no reason to open the app just to check. |
 | **Phone app** | iOS and Android builds of the same code, where alarms stop being a browser's best effort: the OS holds the schedule, so they ring with the app closed, the screen locked and after a reboot. Your own ringtones, real haptics, pencil pressure and tilt. |
 | **Languages** | English, العربية (full RTL) and Русский — interface *and* voice grammar. |
 
@@ -118,6 +121,8 @@ npm test              # voice parser + shape recognizer
 npm run test:nlp      # 22 utterances across the three languages
 npm run test:recognition
 npm run test:alarms   # the notification schedule handed to the phone's OS
+npm run test:offline  # changes made with no connection, and their replay
+npm run test:planner  # the day plan: deadlines, dependencies, capacity
 npm run test:sounds   # every alarm tone is loud, prompt and well-formed
 npm run typecheck
 ```
@@ -209,8 +214,9 @@ Completing a *repeating* task rolls it forward rather than ending it, so only
 the alarms that are genuinely over go quiet.
 
 The next alarm is pinned to the header wherever you are in the app, counting
-down, and a **health panel** on the alarms screen lists every reason an alarm
-might not reach you — notification permission, whether sound has been unlocked
+down — and on Android it is also on the home screen, as a widget that counts
+down on its own without waking the app. A **health panel** on the alarms screen
+lists every reason an alarm might not reach you — notification permission, whether sound has been unlocked
 yet, whether the app is installed — each with the button that fixes it.
 
 **A web app cannot ring reliably with its tab closed.** Nexus says so in the
@@ -233,6 +239,68 @@ Every countdown in the app shares **one** ticker, and each subscriber picks its
 resolution from how far away its deadline is: one second under an hour, one
 minute under two days, five minutes beyond. A hundred rows do not mean a
 hundred timers.
+
+### Working offline
+
+The server is still the truth. Losing it is now a degraded mode rather than a
+wall: reads fall back to a local mirror of the workspace, the reasoning the
+server normally does is computed on the device from the same data — reusing the
+engine the published demo already runs — and changes go into a durable queue
+that replays in order once there is a network again.
+
+The hard part is not the queue, it is ids. Something created offline has no
+real id, and every later change to it — a rename, an alarm, a subtask — points
+at the temporary one. When the server issues the real id, every reference still
+queued has to be rewritten, or the replay sends edits for a task that does not
+exist. The mapping is persisted, substitution is deep, and an operation still
+referring to something unresolved stops the run rather than being sent broken.
+
+Three things this exposed, all of which would have made an installed app fail
+to start with no connection:
+
+- The service worker never cached the app's own bundles. Scripts are requested
+  before the worker takes control, so on a first visit they never reach its
+  fetch handler. They are precached now, from a list injected at build time.
+- Cached files could not be found again. The API sends `Vary: Origin`; the
+  worker's precache request carries no Origin and the page's `<script
+  crossorigin>` request does, making them different cache entries. Lookups
+  ignore Vary, which is correct for same-origin content-hashed files.
+- A failed asset fell back to the app shell, answering a script request with
+  HTML — rejected on MIME type, which reads as a broken app rather than a
+  missing file.
+
+And two that defeated the point entirely: restoring a session swallows a network
+failure and reports "not signed in", so offline showed a login screen that
+cannot be used without a network; and signing in never mirrored the user, so
+there were tasks cached with nobody to show them to.
+
+### Planning the day
+
+A ranked list leaves the hardest question unanswered — whether it fits before
+six, and which of it you are quietly not going to do.
+
+Alarms are placed first, at their own time: they are appointments, not
+preferences, and nothing is scheduled over them. Then demanding work gets first
+refusal on the good hours. Filling earliest-first is simpler and wastes the
+peak — the first task along takes the best hour whether it needs one or not, and
+the hard thinking ends up wherever is left — so anything demanding chooses its
+hour across the whole day before the rest fills in around it.
+
+Which hours are good is **learned** from when tasks were actually finished,
+weighted by effort, smoothed across neighbouring hours, and blended with a
+conventional curve in proportion to how much history exists. Under a dozen
+completions it says so and uses the default, rather than inventing a peak from
+two data points. A night owl gets a late peak; the app does not insist mornings
+are for deep work.
+
+Hard rules stay hard: nothing before it may start, nothing finishing after it
+is due, nothing before what it depends on, and a category with things inside it
+is a heading rather than something you sit down and do. What will not fit is
+listed with the reason, and by how much the day is over.
+
+Every block carries its reason, because a timetable you cannot interrogate is
+one you will not trust twice. It is recomputed from scratch each time and
+nothing is stored, so it cannot disagree with the task list or go stale.
 
 ### The phone
 
@@ -382,6 +450,11 @@ web/
       clock.ts             one ticker for every countdown in the app
       countdown.ts         countdown formatting and urgency
       audio/               synthesized tones, playback
+      planner.ts           lays the day into a timetable (pure, and tested)
+      offline/             the network treated as optional
+        index.ts           the same API surface, with a mirror behind it
+        mirror.ts          a local copy of the workspace
+        outbox.ts          queued changes and temporary-id remapping
       native/              the line between the web app and the phone
         bridge.ts          which platform this is; loads plugins on demand
         alarms.ts          hands the schedule to the OS
@@ -391,6 +464,7 @@ web/
         listeners.ts       Snooze/Done pressed outside the app
         shell.ts           haptics, safe areas, status bar, splash
         endpoint.ts        which server the phone app talks to
+        widget.ts          pushes the next alarm to the home screen
     store/                 auth, data, ui, alarms, voice, focusSession
     three/                 galaxy scene, nebula shader
     views/                 today, galaxy, list, focus, timeline,
@@ -408,6 +482,9 @@ scripts/
   recognition-check.ts     12 shapes with simulated hand jitter
   handwriting-check.ts     10 handwritten phrases, 90% character-accuracy floor
   native-alarm-check.ts    notification ids: uniqueness, cancel coverage, pruning
+  offline-check.ts         queued changes replay in order with the right ids
+  planner-check.ts         the day plan's invariants, not its aesthetics
+  inject-sw-assets.mjs     tells the service worker what to precache
   render-alarm-sounds.mjs  renders the synth to WAV for the phone builds
   install-alarm-sounds.mjs copies the tones into each platform project
   check-alarm-sounds.mjs   every tone is loud, prompt and well-formed
@@ -438,6 +515,13 @@ scripts/
 - **iOS is built but not verified.** The Swift plugin and the project are
   here, but an iOS build needs Xcode on macOS, so only the Android app has
   actually been compiled and inspected.
+- **The home-screen widget is Android only**, and is verified as far as
+  compiling and being registered — rendering it needs a real home screen. An
+  iOS widget is a separate SwiftUI binary with an App Group between them, which
+  is real work rather than a wrapper.
+- **Offline edits are last-write-wins.** Changes queue and replay in order, but
+  if the same task was also changed on another device while you were away, the
+  later write simply wins. There is no field-level merge.
 - **Speech recognition** needs Chrome, Edge or Safari, and most
   implementations send audio to the vendor's servers.
 - **Handwriting** reads separated print, not joined cursive. The transcription
@@ -451,8 +535,8 @@ scripts/
 
 ## Next
 
-The phone builds exist, so the remaining work is the things a device makes
-possible rather than a browser: syncing in the background so the app is current
-before you open it, a home-screen widget showing the next alarm and the day's
-countdown, and offline-first storage with real conflict resolution instead of
-last-write-wins.
+Offline works, the day plans itself and the widget is on the home screen, so
+what is left is the harder half of each: real conflict resolution instead of
+last-write-wins when two devices edit the same task, background sync so the app
+is current before you open it, and an iOS widget — which means a SwiftUI target
+and an App Group rather than more of the same wrapper.

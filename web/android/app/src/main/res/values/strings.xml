@@ -4,4 +4,14 @@
     <string name="title_activity_main">Nexus</string>
     <string name="package_name">app.nexus.reminder</string>
     <string name="custom_url_scheme">app.nexus.reminder</string>
+
+    <string name="widget_description">Your next alarm, counting down.</string>
+    <string name="widget_empty_title">No alarms set</string>
+    <string name="widget_empty_meta">Open Nexus to add one</string>
+    <string name="widget_only_alarm">Nothing else scheduled</string>
+    <string name="widget_stale">Open Nexus to refresh this</string>
+    <plurals name="widget_more_alarms">
+        <item quantity="one">%d more after this</item>
+        <item quantity="other">%d more after this</item>
+    </plurals>
 </resources>

@@ -9,6 +9,7 @@ import {
   type AlarmStrings,
 } from '../lib/native/alarms';
 import { attachNativeListeners, detachNativeListeners } from '../lib/native/listeners';
+import { updateWidget } from '../lib/native/widget';
 import type { DueReminder } from '../lib/types';
 import { useData } from './data';
 import { useUi } from './ui';
@@ -222,7 +223,11 @@ export const useAlarms = create<AlarmState>((set, get) => ({
       // On a phone the operating system, not this ticker, is what actually
       // rings — the app will not be running when the alarm is due. Handing it
       // the schedule after every poll is what makes a closed-app alarm work.
-      if (isNative()) void syncNativeAlarms(upcoming.upcoming, alarmStrings());
+      if (isNative()) {
+        void syncNativeAlarms(upcoming.upcoming, alarmStrings());
+        // And the home screen, which cannot fetch anything for itself.
+        void updateWidget(upcoming.upcoming);
+      }
 
       // Anything already due when we polled fired while we were away.
       for (const reminder of due.due) {

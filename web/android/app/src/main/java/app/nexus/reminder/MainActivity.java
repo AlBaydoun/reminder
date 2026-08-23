@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         // registered before the bridge starts, or the web layer's calls to
         // them resolve to "not implemented".
         registerPlugin(DeviceSoundsPlugin.class);
+        registerPlugin(WidgetPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
